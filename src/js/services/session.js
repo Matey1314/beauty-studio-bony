@@ -40,6 +40,8 @@ async function initializeSession() {
  */
 async function getUserRole(session) {
   try {
+    console.log('Session User ID:', session.user.id);
+    
     const { data, error } = await supabase
       .from('profiles')
       .select('role')
@@ -47,10 +49,11 @@ async function getUserRole(session) {
       .single();
 
     if (error) {
-      console.error('Error fetching user role:', error);
+      console.error('Error fetching role:', error);
       return null;
     }
 
+    console.log('Fetched Role Data:', data);
     return data?.role || null;
   } catch (error) {
     console.error('Unexpected error fetching user role:', error);
@@ -68,18 +71,18 @@ async function handleRoleBasedAccessControl(session) {
     const navAdminLink = document.getElementById('navAdminLink');
 
     // Handle based on user role
-    if (userRole === 'admin') {
-      // Admin user - ensure admin link is visible
-      if (navAdminLink) {
-        navAdminLink.style.display = '';
-      }
-    } else {
-      // Non-admin user (client role or other) - hide admin link
-      if (navAdminLink) {
+    if (navAdminLink) {
+      if (userRole && (userRole === 'admin' || userRole === 'staff')) {
+        navAdminLink.style.display = 'block';
+        // Update link text to "Dashboard" for both admin and staff
+        navAdminLink.textContent = 'Dashboard';
+      } else {
         navAdminLink.style.display = 'none';
       }
+    }
 
-      // Redirect from admin page if non-admin user tries to access it
+    // Redirect from admin page if non-admin, non-staff user tries to access it
+    if (userRole !== 'admin' && userRole !== 'staff') {
       const currentPage = getCurrentPageName();
       if (currentPage === 'admin.html') {
         alert('Access Denied');

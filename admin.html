@@ -39,13 +39,56 @@
 
     <!-- Main Container -->
     <main class="container mt-4">
-        <h1>Admin Panel</h1>
+        <h1>Dashboard</h1>
         <p>Manage your salon operations and customer bookings.</p>
+
+        <!-- Manage Services Section (Admin Only) -->
+        <section id="manageServicesSection" class="mt-4 d-none">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Manage Services</h3>
+                </div>
+                <div class="card-body">
+                    <p>Add, edit, or remove beauty services offered by the salon.</p>
+                    <!-- Services management UI will go here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Manage Users Section (Admin Only) -->
+        <section id="manageUsersSection" class="mt-4 d-none">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Manage Users</h3>
+                </div>
+                <div class="card-body">
+                    <p>View and manage user profiles, assign staff roles.</p>
+                    <!-- User management UI will go here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- My Schedule / Bookings Section (Admin and Staff) -->
+        <section id="myScheduleSection" class="mt-4 d-none">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">My Schedule</h3>
+                </div>
+                <div class="card-body">
+                    <p>View your upcoming appointments and schedule.</p>
+                    <div id="scheduleContent">
+                        <!-- Schedule content will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </section>
     </main>
 
     <!-- Bootstrap 5 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Session Management -->
     <script type="module" src="./src/js/services/session.js"></script>
+    <!-- Admin Dashboard Logic -->
+    <script type="module" src="./src/js/pages/admin.js"></script>
 </body>
 </html>
