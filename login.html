@@ -39,11 +39,67 @@
 
     <!-- Main Container -->
     <main class="container mt-4">
-        <h1>Login</h1>
-        <p>Sign in to your account to manage your bookings and profile.</p>
+        <h1>Account Management</h1>
+        
+        <!-- Auth Message Placeholder -->
+        <div id="authMessage"></div>
+
+        <!-- Two-Column Layout -->
+        <div class="row mt-4">
+            <!-- Left Column: Log In -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-dark text-white">
+                        <h4 class="mb-0">Log In</h4>
+                    </div>
+                    <div class="card-body">
+                        <form id="loginForm">
+                            <div class="mb-3">
+                                <label for="loginEmail" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="loginEmail" name="email" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="loginPassword" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="loginPassword" name="password" required>
+                            </div>
+                            <button type="submit" class="btn btn-dark w-100">Log In</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Register -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-dark text-white">
+                        <h4 class="mb-0">Register</h4>
+                    </div>
+                    <div class="card-body">
+                        <form id="registerForm">
+                            <div class="mb-3">
+                                <label for="registerFullName" class="form-label">Full Name</label>
+                                <input type="text" class="form-control" id="registerFullName" name="fullName" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="registerEmail" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="registerEmail" name="email" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="registerPassword" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="registerPassword" name="password" required>
+                            </div>
+                            <button type="submit" class="btn btn-dark w-100">Register</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Bootstrap 5 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module" src="./src/js/services/auth.js"></script>
+    <!-- Session Management -->
+    <script type="module" src="./src/js/services/session.js"></script>
 </body>
 </html>
