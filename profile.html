@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Beauty Studio Bony - Admin Panel</title>
+    <title>My Profile - Beauty Studio Bony</title>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
@@ -27,10 +27,10 @@
                         <a class="nav-link" href="booking.html">Booking</a>
                     </li>
                     <li class="nav-item" id="navProfileLink" style="display: none;">
-                        <a class="nav-link" href="profile.html">My Profile</a>
+                        <a class="nav-link active" aria-current="page" href="profile.html">My Profile</a>
                     </li>
                     <li class="nav-item" id="navAdminLink" style="display: none;">
-                        <a class="nav-link active" aria-current="page" href="admin.html">Admin Panel</a>
+                        <a class="nav-link" href="admin.html">Admin Panel</a>
                     </li>
                     <li class="nav-item">
                         <a id="navLoginLink" class="nav-link" href="login.html">Login</a>
@@ -42,56 +42,36 @@
 
     <!-- Main Container -->
     <main class="container mt-4">
-        <h1>Dashboard</h1>
-        <p>Manage your salon operations and customer bookings.</p>
-
-        <!-- Manage Services Section (Admin Only) -->
-        <section id="manageServicesSection" class="mt-4 d-none">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">Manage Services</h3>
-                </div>
-                <div class="card-body">
-                    <p>Add, edit, or remove beauty services offered by the salon.</p>
-                    <!-- Services management UI will go here -->
-                </div>
-            </div>
-        </section>
-
-        <!-- Manage Users Section (Admin Only) -->
-        <section id="manageUsersSection" class="mt-4 d-none">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">Manage Users</h3>
-                </div>
-                <div class="card-body">
-                    <p>View and manage user profiles, assign staff roles.</p>
-                    <!-- User management UI will go here -->
-                </div>
-            </div>
-        </section>
-
-        <!-- My Schedule / Bookings Section (Admin and Staff) -->
-        <section id="myScheduleSection" class="mt-4 d-none">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">My Schedule</h3>
-                </div>
-                <div class="card-body">
-                    <p>View your upcoming appointments and schedule.</p>
-                    <div id="scheduleContent">
-                        <!-- Schedule content will be loaded here -->
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title mb-0">My Profile</h2>
+                    </div>
+                    <div class="card-body">
+                        <form id="profileForm">
+                            <div class="mb-3">
+                                <label for="profileName" class="form-label">Full Name</label>
+                                <input type="text" class="form-control" id="profileName" placeholder="Enter your full name" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="profilePhone" class="form-label">Phone Number</label>
+                                <input type="tel" class="form-control" id="profilePhone" placeholder="Enter your phone number" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Update Profile</button>
+                        </form>
+                        <div id="profileMessage" class="mt-3"></div>
                     </div>
                 </div>
             </div>
-        </section>
+        </div>
     </main>
 
     <!-- Bootstrap 5 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Session Management -->
     <script type="module" src="./src/js/services/session.js"></script>
-    <!-- Admin Dashboard Logic -->
-    <script type="module" src="./src/js/pages/admin.js"></script>
+    <!-- Profile Page Script -->
+    <script type="module" src="./src/js/pages/profile.js"></script>
 </body>
 </html>

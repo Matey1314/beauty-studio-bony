@@ -14,16 +14,16 @@ async function initializeSession() {
     const { data: { session } } = await supabase.auth.getSession();
 
     if (session && session.user) {
-      // User is logged in - fetch their role and update UI
+      // User is logged in - update navbar for authenticated state
       await updateNavbarLoggedIn(session);
       await handleRoleBasedAccessControl(session);
     } else {
-      // User is not logged in
+      // User is not logged in - update navbar for unauthenticated state
       updateNavbarLoggedOut();
       
       // Check if user is trying to access protected pages
       const currentPage = getCurrentPageName();
-      if (currentPage === 'booking.html' || currentPage === 'admin.html') {
+      if (currentPage === 'booking.html' || currentPage === 'admin.html' || currentPage === 'profile.html') {
         window.location.href = 'login.html';
       }
     }
@@ -62,57 +62,29 @@ async function getUserRole(session) {
 }
 
 /**
- * Handle role-based access control
- * @param {Object} session - The auth session object
- */
-async function handleRoleBasedAccessControl(session) {
-  try {
-    const userRole = await getUserRole(session);
-    const navAdminLink = document.getElementById('navAdminLink');
-
-    // Handle based on user role
-    if (navAdminLink) {
-      if (userRole && (userRole === 'admin' || userRole === 'staff')) {
-        navAdminLink.style.display = 'block';
-        // Update link text to "Dashboard" for both admin and staff
-        navAdminLink.textContent = 'Dashboard';
-      } else {
-        navAdminLink.style.display = 'none';
-      }
-    }
-
-    // Redirect from admin page if non-admin, non-staff user tries to access it
-    if (userRole !== 'admin' && userRole !== 'staff') {
-      const currentPage = getCurrentPageName();
-      if (currentPage === 'admin.html') {
-        alert('Access Denied');
-        window.location.href = 'index.html';
-      }
-    }
-  } catch (error) {
-    console.error('Error handling role-based access control:', error);
-    // Hide admin link on error for safety
-    const navAdminLink = document.getElementById('navAdminLink');
-    if (navAdminLink) {
-      navAdminLink.style.display = 'none';
-    }
-  }
-}
-
-/**
  * Update navbar UI for logged-in users
  * @param {Object} session - The auth session object
  */
 async function updateNavbarLoggedIn(session) {
-  const loginLink = document.querySelector('a[href="login.html"]');
-  
-  if (loginLink) {
-    loginLink.textContent = 'Logout';
-    loginLink.href = '#';
-    loginLink.removeAttribute('href');
+  // Show My Profile link
+  const navProfileLink = document.getElementById('navProfileLink');
+  if (navProfileLink) {
+    navProfileLink.style.display = 'block';
+  }
+
+  // Update Login link to Logout
+  const navLoginLink = document.getElementById('navLoginLink');
+  if (navLoginLink) {
+    // Clone and replace to remove old event listeners
+    const newNavLoginLink = navLoginLink.cloneNode(true);
+    navLoginLink.parentNode.replaceChild(newNavLoginLink, navLoginLink);
+
+    const updatedNavLoginLink = document.getElementById('navLoginLink');
+    updatedNavLoginLink.textContent = 'Logout';
+    updatedNavLoginLink.href = '#';
     
-    // Add click event listener for logout functionality
-    loginLink.addEventListener('click', async (e) => {
+    // Add logout click event listener
+    updatedNavLoginLink.addEventListener('click', async (e) => {
       e.preventDefault();
       
       try {
@@ -137,21 +109,63 @@ async function updateNavbarLoggedIn(session) {
  * Update navbar UI for logged-out users
  */
 function updateNavbarLoggedOut() {
-  const loginLink = document.querySelector('a[href="login.html"]');
-  
-  if (loginLink) {
-    loginLink.textContent = 'Login';
-    loginLink.href = 'login.html';
-    
-    // Remove any logout click listeners that might exist
-    const newLoginLink = loginLink.cloneNode(true);
-    loginLink.parentNode.replaceChild(newLoginLink, loginLink);
+  // Hide My Profile link
+  const navProfileLink = document.getElementById('navProfileLink');
+  if (navProfileLink) {
+    navProfileLink.style.display = 'none';
   }
 
-  // Hide admin link for logged-out users
+  // Hide Admin Panel link
   const navAdminLink = document.getElementById('navAdminLink');
   if (navAdminLink) {
     navAdminLink.style.display = 'none';
+  }
+
+  // Reset Login link
+  const navLoginLink = document.getElementById('navLoginLink');
+  if (navLoginLink) {
+    // Clone and replace to remove event listeners
+    const newNavLoginLink = navLoginLink.cloneNode(true);
+    navLoginLink.parentNode.replaceChild(newNavLoginLink, navLoginLink);
+
+    const updatedNavLoginLink = document.getElementById('navLoginLink');
+    updatedNavLoginLink.textContent = 'Login';
+    updatedNavLoginLink.href = 'login.html';
+  }
+}
+
+/**
+ * Handle role-based access control
+ * @param {Object} session - The auth session object
+ */
+async function handleRoleBasedAccessControl(session) {
+  try {
+    const userRole = await getUserRole(session);
+    const navAdminLink = document.getElementById('navAdminLink');
+
+    // Handle admin link visibility based on user role
+    if (navAdminLink) {
+      if (userRole && (userRole === 'admin' || userRole === 'staff')) {
+        navAdminLink.style.display = 'block';
+        // Keep the link text as is (Admin Panel or Dashboard based on what's in HTML)
+      } else {
+        navAdminLink.style.display = 'none';
+      }
+    }
+
+    // Redirect non-admin/staff users from admin page
+    const currentPage = getCurrentPageName();
+    if (currentPage === 'admin.html' && userRole !== 'admin' && userRole !== 'staff') {
+      alert('Access Denied');
+      window.location.href = 'index.html';
+    }
+  } catch (error) {
+    console.error('Error handling role-based access control:', error);
+    // Hide admin link on error for safety
+    const navAdminLink = document.getElementById('navAdminLink');
+    if (navAdminLink) {
+      navAdminLink.style.display = 'none';
+    }
   }
 }
 
@@ -170,7 +184,7 @@ function setupAuthStateChangeListener() {
       
       // Redirect from protected pages
       const currentPage = getCurrentPageName();
-      if (currentPage === 'booking.html' || currentPage === 'admin.html') {
+      if (currentPage === 'booking.html' || currentPage === 'admin.html' || currentPage === 'profile.html') {
         window.location.href = 'login.html';
       }
     }

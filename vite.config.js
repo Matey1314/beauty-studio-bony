@@ -11,6 +11,7 @@ export default defineConfig({
         gallery: './gallery.html',
         booking: './booking.html',
         login: './login.html',
+        profile: './profile.html',
         admin: './admin.html'
       }
     }
