@@ -1,24 +1,18 @@
-import { defineConfig } from 'vite';
-import { resolve } from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
+import { defineConfig } from 'vite'
 
 export default defineConfig({
+  server: {
+    port: 3000
+  },
   build: {
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'index.html'),
-        gallery: resolve(__dirname, 'gallery.html'),
-        booking: resolve(__dirname, 'booking.html'),
-        login: resolve(__dirname, 'login.html'),
-        admin: resolve(__dirname, 'admin.html'),
-      },
-    },
-  },
-  server: {
-    port: 3000,
-    open: true,
-  },
-});
+        main: './index.html',
+        gallery: './gallery.html',
+        booking: './booking.html',
+        login: './login.html',
+        admin: './admin.html'
+      }
+    }
+  }
+})
