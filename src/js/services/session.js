@@ -14,8 +14,9 @@ async function initializeSession() {
     const { data: { session } } = await supabase.auth.getSession();
 
     if (session && session.user) {
-      // User is logged in
-      updateNavbarLoggedIn();
+      // User is logged in - fetch their role and update UI
+      await updateNavbarLoggedIn(session);
+      await handleRoleBasedAccessControl(session);
     } else {
       // User is not logged in
       updateNavbarLoggedOut();
@@ -33,9 +34,73 @@ async function initializeSession() {
 }
 
 /**
- * Update navbar UI for logged-in users
+ * Fetch user role from profiles table
+ * @param {Object} session - The auth session object
+ * @returns {Promise<string|null>} The user's role or null if not found
  */
-function updateNavbarLoggedIn() {
+async function getUserRole(session) {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', session.user.id)
+      .single();
+
+    if (error) {
+      console.error('Error fetching user role:', error);
+      return null;
+    }
+
+    return data?.role || null;
+  } catch (error) {
+    console.error('Unexpected error fetching user role:', error);
+    return null;
+  }
+}
+
+/**
+ * Handle role-based access control
+ * @param {Object} session - The auth session object
+ */
+async function handleRoleBasedAccessControl(session) {
+  try {
+    const userRole = await getUserRole(session);
+    const navAdminLink = document.getElementById('navAdminLink');
+
+    // Handle based on user role
+    if (userRole === 'admin') {
+      // Admin user - ensure admin link is visible
+      if (navAdminLink) {
+        navAdminLink.style.display = '';
+      }
+    } else {
+      // Non-admin user (client role or other) - hide admin link
+      if (navAdminLink) {
+        navAdminLink.style.display = 'none';
+      }
+
+      // Redirect from admin page if non-admin user tries to access it
+      const currentPage = getCurrentPageName();
+      if (currentPage === 'admin.html') {
+        alert('Access Denied');
+        window.location.href = 'index.html';
+      }
+    }
+  } catch (error) {
+    console.error('Error handling role-based access control:', error);
+    // Hide admin link on error for safety
+    const navAdminLink = document.getElementById('navAdminLink');
+    if (navAdminLink) {
+      navAdminLink.style.display = 'none';
+    }
+  }
+}
+
+/**
+ * Update navbar UI for logged-in users
+ * @param {Object} session - The auth session object
+ */
+async function updateNavbarLoggedIn(session) {
   const loginLink = document.querySelector('a[href="login.html"]');
   
   if (loginLink) {
@@ -79,16 +144,23 @@ function updateNavbarLoggedOut() {
     const newLoginLink = loginLink.cloneNode(true);
     loginLink.parentNode.replaceChild(newLoginLink, loginLink);
   }
+
+  // Hide admin link for logged-out users
+  const navAdminLink = document.getElementById('navAdminLink');
+  if (navAdminLink) {
+    navAdminLink.style.display = 'none';
+  }
 }
 
 /**
  * Setup listener for auth state changes (login/logout events)
  */
 function setupAuthStateChangeListener() {
-  supabase.auth.onAuthStateChange((event, session) => {
+  supabase.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_IN') {
       // User just signed in
-      updateNavbarLoggedIn();
+      await updateNavbarLoggedIn(session);
+      await handleRoleBasedAccessControl(session);
     } else if (event === 'SIGNED_OUT') {
       // User just signed out
       updateNavbarLoggedOut();
