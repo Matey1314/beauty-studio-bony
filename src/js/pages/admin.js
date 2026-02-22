@@ -34,20 +34,24 @@ async function initializeDashboard(session) {
     }
 
     // Get section elements
-    const manageServicesSection = document.getElementById('manageServicesSection');
+    const adminServicesSection = document.getElementById('adminServicesSection');
     const manageUsersSection = document.getElementById('manageUsersSection');
     const myScheduleSection = document.getElementById('myScheduleSection');
 
     if (userRole === 'admin') {
       // Admin: Show all sections
-      if (manageServicesSection) manageServicesSection.classList.remove('d-none');
+      if (adminServicesSection) adminServicesSection.classList.remove('d-none');
       if (manageUsersSection) manageUsersSection.classList.remove('d-none');
       if (myScheduleSection) myScheduleSection.classList.remove('d-none');
 
       // Load content for admin
+      await loadSpecialists();
+      await loadServices();
       await loadAdminSchedule(session.user.id);
+      setupServiceFormListener();
     } else if (userRole === 'staff') {
       // Staff: Hide Manage Services and Manage Users, show only My Schedule
+      if (adminServicesSection) adminServicesSection.classList.add('d-none');
       if (manageServicesSection) manageServicesSection.classList.add('d-none');
       if (manageUsersSection) manageUsersSection.classList.add('d-none');
       if (myScheduleSection) myScheduleSection.classList.remove('d-none');
@@ -86,6 +90,45 @@ async function getUserRole(userId) {
   } catch (error) {
     console.error('Unexpected error fetching user role:', error);
     return null;
+  }
+}
+
+/**
+ * Load specialists from the database and populate the specialist dropdown
+ */
+async function loadSpecialists() {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .eq('role', 'staff')
+      .order('full_name', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching specialists:', error);
+      return;
+    }
+
+    const specialistSelect = document.getElementById('serviceSpecialist');
+    if (!specialistSelect) {
+      console.error('Specialist select element not found');
+      return;
+    }
+
+    // Clear existing options except the default one
+    specialistSelect.innerHTML = '<option value="">Select Specialist...</option>';
+
+    // Add specialists to dropdown
+    if (data && data.length > 0) {
+      data.forEach(specialist => {
+        const option = document.createElement('option');
+        option.value = specialist.id;
+        option.textContent = specialist.full_name;
+        specialistSelect.appendChild(option);
+      });
+    }
+  } catch (error) {
+    console.error('Unexpected error loading specialists:', error);
   }
 }
 
@@ -228,5 +271,161 @@ function getStatusBadgeColor(status) {
       return 'danger';
     default:
       return 'secondary';
+  }
+}
+
+/**
+ * Load services from the database and populate the table
+ */
+async function loadServices() {
+  try {
+    const { data: services, error } = await supabase
+      .from('services')
+      .select('*, profiles(full_name)');
+
+    console.log('Fetched services:', services);
+    console.error('Fetch error:', error);
+
+    if (error) {
+      console.error('Error fetching services:', error);
+      return;
+    }
+
+    populateServicesTable(services || []);
+  } catch (error) {
+    console.error('Unexpected error loading services:', error);
+  }
+}
+
+/**
+ * Populate the services table with data
+ * @param {Array} services - Array of service objects
+ */
+function populateServicesTable(services) {
+  const tbody = document.getElementById('servicesTableBody');
+
+  if (!tbody) {
+    console.error('Services table body not found');
+    return;
+  }
+
+  tbody.innerHTML = '';
+
+  if (services.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-muted text-center">No services found.</td></tr>';
+    return;
+  }
+
+  services.forEach(service => {
+    const specialistName = (service.profiles && service.profiles.full_name) ? service.profiles.full_name : 'Без специалист';
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${service.name}</td>
+      <td>${service.description}</td>
+      <td>$${parseFloat(service.price).toFixed(2)}</td>
+      <td>${service.duration_minutes} min</td>
+      <td>${specialistName}</td>
+      <td>
+        <button class="btn btn-sm btn-danger delete-service-btn" data-service-id="${service.id}">
+          Delete
+        </button>
+      </td>
+    `;
+    tbody.appendChild(row);
+  });
+
+  // Add event listeners to delete buttons
+  document.querySelectorAll('.delete-service-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const serviceId = e.target.getAttribute('data-service-id');
+      await deleteService(serviceId);
+    });
+  });
+}
+
+/**
+ * Setup event listener for the Add Service form
+ */
+function setupServiceFormListener() {
+  const form = document.getElementById('addServiceForm');
+
+  if (!form) {
+    console.error('Add Service form not found');
+    return;
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const name = document.getElementById('serviceName').value.trim();
+    const description = document.getElementById('serviceDescription').value.trim();
+    const price = parseFloat(document.getElementById('servicePrice').value);
+    const duration_minutes = parseInt(document.getElementById('serviceDuration').value);
+    const specialist_id = document.getElementById('serviceSpecialist').value.trim() || null;
+
+    if (!name || !description || isNaN(price) || isNaN(duration_minutes)) {
+      alert('Please fill in all required fields correctly');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('services')
+        .insert([
+          {
+            name,
+            description,
+            price,
+            duration_minutes,
+            specialist_id
+          }
+        ]);
+
+      if (error) {
+        console.error('Error adding service:', error);
+        alert('Failed to add service');
+        return;
+      }
+
+      // Clear the form
+      form.reset();
+
+      // Reload services
+      await loadServices();
+      alert('Service added successfully!');
+    } catch (error) {
+      console.error('Unexpected error adding service:', error);
+      alert('An error occurred while adding the service');
+    }
+  });
+}
+
+/**
+ * Delete a service by ID
+ * @param {string} serviceId - The service ID to delete
+ */
+async function deleteService(serviceId) {
+  if (!confirm('Are you sure you want to delete this service?')) {
+    return;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('services')
+      .delete()
+      .eq('id', serviceId);
+
+    if (error) {
+      console.error('Error deleting service:', error);
+      alert('Failed to delete service');
+      return;
+    }
+
+    // Reload services
+    await loadServices();
+    alert('Service deleted successfully!');
+  } catch (error) {
+    console.error('Unexpected error deleting service:', error);
+    alert('An error occurred while deleting the service');
   }
 }
