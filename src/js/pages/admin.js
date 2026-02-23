@@ -47,6 +47,7 @@ async function initializeDashboard(session) {
       // Load content for admin
       await loadSpecialists();
       await loadServices();
+      await loadUsers();
       await loadAdminSchedule(session.user.id);
       setupServiceFormListener();
     } else if (userRole === 'staff') {
@@ -427,5 +428,101 @@ async function deleteService(serviceId) {
   } catch (error) {
     console.error('Unexpected error deleting service:', error);
     alert('An error occurred while deleting the service');
+  }
+}
+
+/**
+ * Load all users and display them in the users table with role management
+ */
+async function loadUsers() {
+  try {
+    const { data: users, error } = await supabase
+      .from('profiles')
+      .select('*');
+
+    if (error) {
+      console.error('Error fetching users:', error);
+      return;
+    }
+
+    const usersTableBody = document.getElementById('usersTableBody');
+
+    if (!usersTableBody) {
+      console.error('Users table body not found');
+      return;
+    }
+
+    // Clear the table body
+    usersTableBody.innerHTML = '';
+
+    if (!users || users.length === 0) {
+      usersTableBody.innerHTML = '<tr><td colspan="4" class="text-muted text-center">No users found.</td></tr>';
+      return;
+    }
+
+    // Loop through users and create table rows
+    users.forEach(user => {
+      const row = document.createElement('tr');
+      const fullName = user.full_name || 'N/A';
+      const phone = user.phone || 'N/A';
+      const role = user.role || 'client';
+
+      row.innerHTML = `
+        <td>${fullName}</td>
+        <td>${phone}</td>
+        <td>
+          <select class="form-select form-select-sm role-dropdown" data-user-id="${user.id}" data-current-role="${role}">
+            <option value="client" ${role === 'client' ? 'selected' : ''}>client</option>
+            <option value="staff" ${role === 'staff' ? 'selected' : ''}>staff</option>
+            <option value="admin" ${role === 'admin' ? 'selected' : ''}>admin</option>
+          </select>
+        </td>
+        <td>
+          <button class="btn btn-sm btn-primary save-role-btn" data-user-id="${user.id}">
+            Save Role
+          </button>
+        </td>
+      `;
+
+      usersTableBody.appendChild(row);
+    });
+
+    // Add event listeners to all Save Role buttons
+    document.querySelectorAll('.save-role-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const userId = e.target.getAttribute('data-user-id');
+        const dropdown = e.target.closest('tr').querySelector('.role-dropdown');
+        const selectedRole = dropdown.value;
+
+        await updateUserRole(userId, selectedRole);
+      });
+    });
+  } catch (error) {
+    console.error('Unexpected error loading users:', error);
+  }
+}
+
+/**
+ * Update a user's role in the database
+ * @param {string} userId - The user ID
+ * @param {string} role - The new role value
+ */
+async function updateUserRole(userId, role) {
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ role })
+      .eq('id', userId);
+
+    if (error) {
+      console.error('Error updating user role:', error);
+      alert('Failed to update user role');
+      return;
+    }
+
+    alert('Role updated successfully!');
+  } catch (error) {
+    console.error('Unexpected error updating user role:', error);
+    alert('An error occurred while updating the user role');
   }
 }
