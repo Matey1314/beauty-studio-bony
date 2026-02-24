@@ -136,19 +136,30 @@
         </section>
 
         <!-- My Schedule / Bookings Section (Admin and Staff) -->
-        <section id="myScheduleSection" class="mt-4 d-none">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">My Schedule</h3>
-                </div>
-                <div class="card-body">
-                    <p>View your upcoming appointments and schedule.</p>
-                    <div id="scheduleContent">
-                        <!-- Schedule content will be loaded here -->
-                    </div>
+        <div id="adminScheduleSection" class="card mb-4" style="display: none;">
+            <div class="card-header bg-dark text-white">
+                <h4 class="mb-0">My Schedule</h4>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Manage your upcoming appointments.</p>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date & Time</th>
+                                <th>Client Name</th>
+                                <th>Phone</th>
+                                <th>Service</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scheduleTableBody">
+                        </tbody>
+                    </table>
                 </div>
             </div>
-        </section>
+        </div>
     </main>
 
     <!-- Bootstrap 5 JS -->

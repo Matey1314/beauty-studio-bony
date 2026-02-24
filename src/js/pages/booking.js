@@ -1,23 +1,55 @@
 import { supabase } from '../services/supabaseClient.js';
 
 /**
+ * Check for active session and redirect to login if necessary
+ */
+async function checkSession() {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session || !session.user) {
+      window.location.href = 'login.html';
+      return null;
+    }
+    return session;
+  } catch (error) {
+    console.error('Error checking session:', error);
+    window.location.href = 'login.html';
+    return null;
+  }
+}
+
+/**
  * Initialize booking page
  * Load services and staff members
  */
 document.addEventListener('DOMContentLoaded', async () => {
   try {
-    await loadServices();
-    await loadSpecialists();
+    const session = await checkSession();
+    if (!session) return;
+
+    await loadFormOptions();
     setupFormSubmission();
   } catch (error) {
     console.error('Error initializing booking page:', error);
-    showStatusMessage('Error loading booking form. Please refresh the page.', 'danger');
+    showBookingMessage('Error loading booking form. Please refresh the page.', 'danger');
   }
 });
 
 /**
- * Load all services from the database
- * Populate the service dropdown
+ * Load form options (services and specialists)
+ */
+async function loadFormOptions() {
+  try {
+    await loadServices();
+    await loadSpecialists();
+  } catch (error) {
+    console.error('Error loading form options:', error);
+    showBookingMessage('Error loading form options. Please refresh the page.', 'danger');
+  }
+}
+
+/**
+ * Load all services from the database and populate the service dropdown
  */
 async function loadServices() {
   try {
@@ -28,15 +60,15 @@ async function loadServices() {
 
     if (error) {
       console.error('Error fetching services:', error);
-      showStatusMessage('Error loading services. Please try again.', 'danger');
+      showBookingMessage('Error loading services. Please try again.', 'danger');
       return;
     }
 
-    const serviceSelect = document.getElementById('serviceSelect');
+    const serviceSelect = document.getElementById('bookingService');
     if (!serviceSelect) return;
 
     // Clear existing options except the first placeholder
-    serviceSelect.innerHTML = '<option value="">Choose a service...</option>';
+    serviceSelect.innerHTML = '<option value="">Select Service...</option>';
 
     // Add service options
     if (data && data.length > 0) {
@@ -52,13 +84,12 @@ async function loadServices() {
     }
   } catch (error) {
     console.error('Unexpected error loading services:', error);
-    showStatusMessage('An unexpected error occurred. Please try again.', 'danger');
+    showBookingMessage('An unexpected error occurred. Please try again.', 'danger');
   }
 }
 
 /**
- * Load all staff members from the database
- * Populate the specialist dropdown
+ * Load all staff members from the database and populate the specialist dropdown
  */
 async function loadSpecialists() {
   try {
@@ -70,15 +101,15 @@ async function loadSpecialists() {
 
     if (error) {
       console.error('Error fetching specialists:', error);
-      showStatusMessage('Error loading specialists. Please try again.', 'danger');
+      showBookingMessage('Error loading specialists. Please try again.', 'danger');
       return;
     }
 
-    const specialistSelect = document.getElementById('specialistSelect');
+    const specialistSelect = document.getElementById('bookingSpecialist');
     if (!specialistSelect) return;
 
     // Clear existing options except the first placeholder
-    specialistSelect.innerHTML = '<option value="">Choose a specialist...</option>';
+    specialistSelect.innerHTML = '<option value="">Select Specialist...</option>';
 
     // Add specialist options
     if (data && data.length > 0) {
@@ -94,7 +125,7 @@ async function loadSpecialists() {
     }
   } catch (error) {
     console.error('Unexpected error loading specialists:', error);
-    showStatusMessage('An unexpected error occurred. Please try again.', 'danger');
+    showBookingMessage('An unexpected error occurred. Please try again.', 'danger');
   }
 }
 
@@ -124,19 +155,20 @@ async function submitBooking() {
     const { data: { session } } = await supabase.auth.getSession();
 
     if (!session || !session.user) {
-      showStatusMessage('Please log in to book an appointment.', 'danger');
+      showBookingMessage('Please log in to book an appointment.', 'danger');
       window.location.href = 'login.html';
       return;
     }
 
     // Get form values
-    const serviceId = document.getElementById('serviceSelect').value;
-    const employeeId = document.getElementById('specialistSelect').value;
-    const appointmentDateTime = document.getElementById('appointmentDateTime').value;
+    const serviceVal = document.getElementById('bookingService').value;
+    const specialistVal = document.getElementById('bookingSpecialist').value;
+    const dateVal = document.getElementById('bookingDate').value;
+    const timeVal = document.getElementById('bookingTime').value;
 
     // Validate inputs
-    if (!serviceId || !employeeId || !appointmentDateTime) {
-      showStatusMessage('Please fill in all required fields.', 'warning');
+    if (!serviceVal || !specialistVal || !dateVal || !timeVal) {
+      showBookingMessage('Please fill in all required fields.', 'warning');
       return;
     }
 
@@ -144,15 +176,18 @@ async function submitBooking() {
     const submitButton = document.querySelector('#bookingForm button[type="submit"]');
     if (submitButton) {
       submitButton.disabled = true;
-      submitButton.textContent = 'Booking...';
+      submitButton.textContent = 'Confirming...';
     }
+
+    // Combine date and time into a valid PostgreSQL timestamp
+    const appointmentDate = new Date(`${dateVal}T${timeVal}`).toISOString();
 
     // Create booking object
     const booking = {
       client_id: session.user.id,
-      service_id: serviceId,
-      employee_id: employeeId,
-      appointment_date: new Date(appointmentDateTime).toISOString(),
+      service_id: serviceVal,
+      employee_id: specialistVal,
+      appointment_date: appointmentDate,
       status: 'pending'
     };
 
@@ -164,17 +199,17 @@ async function submitBooking() {
 
     if (error) {
       console.error('Error creating booking:', error);
-      showStatusMessage(`Error booking appointment: ${error.message}`, 'danger');
+      showBookingMessage(`Error booking appointment: ${error.message}`, 'danger');
       
       // Re-enable form button
       if (submitButton) {
         submitButton.disabled = false;
-        submitButton.textContent = 'Book Appointment';
+        submitButton.textContent = 'Confirm Booking';
       }
       return;
     }
 
-    showStatusMessage('Appointment booked successfully! We will confirm your booking shortly.', 'success');
+    showBookingMessage('Booking confirmed! Redirecting to your profile...', 'success');
 
     // Reset form
     document.getElementById('bookingForm').reset();
@@ -182,37 +217,37 @@ async function submitBooking() {
     // Re-enable form button
     if (submitButton) {
       submitButton.disabled = false;
-      submitButton.textContent = 'Book Appointment';
+      submitButton.textContent = 'Confirm Booking';
     }
 
-    // Optionally redirect after a delay
+    // Redirect after 2 seconds
     setTimeout(() => {
-      window.location.href = 'index.html';
+      window.location.href = 'profile.html';
     }, 2000);
   } catch (error) {
     console.error('Unexpected error submitting booking:', error);
-    showStatusMessage(`An unexpected error occurred: ${error.message}`, 'danger');
+    showBookingMessage(`An unexpected error occurred: ${error.message}`, 'danger');
 
     // Re-enable form button
     const submitButton = document.querySelector('#bookingForm button[type="submit"]');
     if (submitButton) {
       submitButton.disabled = false;
-      submitButton.textContent = 'Book Appointment';
+      submitButton.textContent = 'Confirm Booking';
     }
   }
 }
 
 /**
- * Display status message to user
+ * Display booking message to user
  * @param {string} message - The message to display
  * @param {string} type - Bootstrap alert type (success, danger, warning, info)
  */
-function showStatusMessage(message, type = 'info') {
-  const statusDiv = document.getElementById('statusMessage');
+function showBookingMessage(message, type = 'info') {
+  const messageDiv = document.getElementById('bookingMessage');
 
-  if (!statusDiv) return;
+  if (!messageDiv) return;
 
-  statusDiv.innerHTML = `
+  messageDiv.innerHTML = `
     <div class="alert alert-${type} alert-dismissible fade show" role="alert">
       ${message}
       <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -222,10 +257,11 @@ function showStatusMessage(message, type = 'info') {
   // Auto-dismiss success messages after 3 seconds
   if (type === 'success') {
     setTimeout(() => {
-      const alert = statusDiv.querySelector('.alert');
+      const alert = messageDiv.querySelector('.alert');
       if (alert) {
         alert.remove();
       }
     }, 3000);
   }
 }
+

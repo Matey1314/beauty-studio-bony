@@ -34,31 +34,24 @@ async function initializeDashboard(session) {
     }
 
     // Get section elements
-    const adminServicesSection = document.getElementById('adminServicesSection');
-    const manageUsersSection = document.getElementById('manageUsersSection');
-    const myScheduleSection = document.getElementById('myScheduleSection');
+    const servicesSec = document.getElementById('adminServicesSection');
+    const usersSec = document.getElementById('manageUsersSection');
+    const scheduleSec = document.getElementById('adminScheduleSection');
 
-    if (userRole === 'admin') {
-      // Admin: Show all sections
-      if (adminServicesSection) adminServicesSection.classList.remove('d-none');
-      if (manageUsersSection) manageUsersSection.classList.remove('d-none');
-      if (myScheduleSection) myScheduleSection.classList.remove('d-none');
-
-      // Load content for admin
+    if (userRole === 'staff') {
+      if (servicesSec) servicesSec.style.display = 'none';
+      if (usersSec) usersSec.style.display = 'none';
+      if (scheduleSec) scheduleSec.style.display = 'block';
+      await loadSchedule(session);
+    } else if (userRole === 'admin') {
+      if (servicesSec) servicesSec.style.display = 'block';
+      if (usersSec) usersSec.style.display = 'block';
+      if (scheduleSec) scheduleSec.style.display = 'block';
       await loadSpecialists();
       await loadServices();
       await loadUsers();
-      await loadAdminSchedule(session.user.id);
+      await loadSchedule(session);
       setupServiceFormListener();
-    } else if (userRole === 'staff') {
-      // Staff: Hide Manage Services and Manage Users, show only My Schedule
-      if (adminServicesSection) adminServicesSection.classList.add('d-none');
-      if (manageServicesSection) manageServicesSection.classList.add('d-none');
-      if (manageUsersSection) manageUsersSection.classList.add('d-none');
-      if (myScheduleSection) myScheduleSection.classList.remove('d-none');
-
-      // Load content for staff (their own schedule)
-      await loadStaffSchedule(session.user.id);
     } else {
       // Client or other role: Should not be here
       console.warn('User role does not have dashboard access');
@@ -134,145 +127,107 @@ async function loadSpecialists() {
 }
 
 /**
- * Load and display schedule for admin users
- * Shows all bookings in the system
- * @param {string} userId - The admin user ID
+ * Load and display schedule with bulletproof rendering
+ * Fetches bookings and renders them into the DOM with proper error handling
+ * @param {Object} session - The auth session object
  */
-async function loadAdminSchedule(userId) {
-  try {
-    const { data, error } = await supabase
-      .from('bookings')
-      .select(`
-        id,
-        client_id,
-        service_id,
-        appointment_date,
-        status,
-        employee_id,
-        profiles:client_id(full_name, phone),
-        services:service_id(name, price, duration_minutes)
-      `)
-      .order('appointment_date', { ascending: true });
+async function loadSchedule(session) {
+    try {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (!currentSession) return;
 
-    if (error) {
-      console.error('Error fetching bookings:', error);
-      return;
+        // Fetch role
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', currentSession.user.id).single();
+        const userRole = profile?.role;
+
+        // Build query (Trying standard foreign key for the client)
+        let query = supabase
+            .from('bookings')
+            .select('id, appointment_date, status, services(name), client:profiles!bookings_client_id_fkey(full_name, phone)')
+            .order('appointment_date', { ascending: true });
+
+        // Filter for staff
+        if (userRole === 'staff') {
+            query = query.eq('employee_id', currentSession.user.id);
+        }
+
+        const { data: schedule, error } = await query;
+        console.log('Fetched schedule array for render:', schedule);
+
+        if (error) {
+            console.error('Error fetching schedule:', error);
+            return;
+        }
+
+        const tbody = document.getElementById('scheduleTableBody');
+        if (!tbody) {
+            console.error('CRITICAL: scheduleTableBody element is missing in admin.html!');
+            return;
+        }
+
+        // Clear existing rows
+        tbody.innerHTML = '';
+
+        if (!schedule || schedule.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center">No appointments found.</td></tr>';
+            return;
+        }
+
+        // Render rows safely
+        schedule.forEach(booking => {
+            const dateObj = new Date(booking.appointment_date);
+            const formattedDate = isNaN(dateObj) ? 'Invalid Date' : dateObj.toLocaleString();
+            
+            // Safely extract names in case the join alias differs
+            const clientName = booking.client?.full_name || booking.profiles?.full_name || 'N/A';
+            const clientPhone = booking.client?.phone || booking.profiles?.phone || 'N/A';
+            const serviceName = booking.services?.name || 'N/A';
+            const status = booking.status || 'pending';
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${formattedDate}</td>
+                <td>${clientName}</td>
+                <td>${clientPhone}</td>
+                <td>${serviceName}</td>
+                <td>
+                    <select class="form-select form-select-sm status-select" data-id="${booking.id}">
+                        <option value="pending" ${status === 'pending' ? 'selected' : ''}>Pending</option>
+                        <option value="confirmed" ${status === 'confirmed' ? 'selected' : ''}>Confirmed</option>
+                        <option value="completed" ${status === 'completed' ? 'selected' : ''}>Completed</option>
+                        <option value="cancelled" ${status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+                    </select>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-success save-status-btn" data-id="${booking.id}">Save</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // Attach event listeners
+        document.querySelectorAll('.save-status-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const bookingId = e.target.getAttribute('data-id');
+                const selectEl = document.querySelector(`.status-select[data-id="${bookingId}"]`);
+                
+                if (selectEl) {
+                    const newStatus = selectEl.value;
+                    const { error: updateError } = await supabase.from('bookings').update({ status: newStatus }).eq('id', bookingId);
+                    
+                    if (updateError) {
+                        alert('Error updating status!');
+                        console.error(updateError);
+                    } else {
+                        alert('Status updated successfully!');
+                    }
+                }
+            });
+        });
+
+    } catch (err) {
+        console.error('Unexpected error during loadSchedule rendering:', err);
     }
-
-    displaySchedule(data, 'Admin Schedule');
-  } catch (error) {
-    console.error('Unexpected error loading admin schedule:', error);
-  }
-}
-
-/**
- * Load and display schedule for staff users
- * Shows only bookings assigned to the staff member
- * @param {string} userId - The staff member's user ID
- */
-async function loadStaffSchedule(userId) {
-  try {
-    const { data, error } = await supabase
-      .from('bookings')
-      .select(`
-        id,
-        client_id,
-        service_id,
-        appointment_date,
-        status,
-        employee_id,
-        profiles:client_id(full_name, phone),
-        services:service_id(name, price, duration_minutes)
-      `)
-      .eq('employee_id', userId)
-      .order('appointment_date', { ascending: true });
-
-    if (error) {
-      console.error('Error fetching staff bookings:', error);
-      return;
-    }
-
-    displaySchedule(data, 'Your Schedule');
-  } catch (error) {
-    console.error('Unexpected error loading staff schedule:', error);
-  }
-}
-
-/**
- * Display bookings in a table format
- * @param {Array} bookings - Array of booking objects
- * @param {string} title - Title for the schedule display
- */
-function displaySchedule(bookings, title) {
-  const scheduleContent = document.getElementById('scheduleContent');
-
-  if (!scheduleContent) {
-    console.error('Schedule content container not found');
-    return;
-  }
-
-  if (!bookings || bookings.length === 0) {
-    scheduleContent.innerHTML = '<p class="text-muted">No bookings found.</p>';
-    return;
-  }
-
-  // Create table HTML
-  const tableHTML = `
-    <div class="table-responsive">
-      <table class="table table-striped table-hover">
-        <thead class="table-dark">
-          <tr>
-            <th>Date & Time</th>
-            <th>Client Name</th>
-            <th>Phone</th>
-            <th>Service</th>
-            <th>Price</th>
-            <th>Duration</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${bookings.map(booking => `
-            <tr>
-              <td>${new Date(booking.appointment_date).toLocaleString()}</td>
-              <td>${booking.profiles?.full_name || 'N/A'}</td>
-              <td>${booking.profiles?.phone || 'N/A'}</td>
-              <td>${booking.services?.name || 'N/A'}</td>
-              <td>$${booking.services?.price || 'N/A'}</td>
-              <td>${booking.services?.duration_minutes || 'N/A'} min</td>
-              <td>
-                <span class="badge bg-${getStatusBadgeColor(booking.status)}">
-                  ${booking.status}
-                </span>
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
-
-  scheduleContent.innerHTML = tableHTML;
-}
-
-/**
- * Get Bootstrap badge color based on booking status
- * @param {string} status - The booking status
- * @returns {string} Bootstrap color class
- */
-function getStatusBadgeColor(status) {
-  switch (status?.toLowerCase()) {
-    case 'pending':
-      return 'warning';
-    case 'confirmed':
-      return 'success';
-    case 'completed':
-      return 'info';
-    case 'cancelled':
-      return 'danger';
-    default:
-      return 'secondary';
-  }
 }
 
 /**
@@ -282,10 +237,7 @@ async function loadServices() {
   try {
     const { data: services, error } = await supabase
       .from('services')
-      .select('*, profiles(full_name)');
-
-    console.log('Fetched services:', services);
-    console.error('Fetch error:', error);
+      .select('*, specialist:profiles!services_specialist_id_fkey(full_name)');
 
     if (error) {
       console.error('Error fetching services:', error);
@@ -318,7 +270,7 @@ function populateServicesTable(services) {
   }
 
   services.forEach(service => {
-    const specialistName = (service.profiles && service.profiles.full_name) ? service.profiles.full_name : 'Без специалист';
+    const specialistName = (service.specialist && service.specialist.full_name) ? service.specialist.full_name : 'Без специалист';
     const row = document.createElement('tr');
     row.innerHTML = `
       <td>${service.name}</td>

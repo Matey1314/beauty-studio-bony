@@ -42,46 +42,45 @@
 
     <!-- Main Container -->
     <main class="container mt-4">
-        <h1>Booking</h1>
-        <p>Reserve your appointment at Beauty Studio Bony.</p>
-
         <div class="row">
-            <div class="col-md-6 mx-auto">
+            <div class="col-md-8 mx-auto">
                 <div class="card">
                     <div class="card-header bg-dark text-white">
-                        <h5 class="card-title mb-0">Book Your Appointment</h5>
+                        <h5 class="card-title mb-0">Book an Appointment</h5>
                     </div>
                     <div class="card-body">
+                        <div id="bookingMessage"></div>
                         <form id="bookingForm">
                             <!-- Service Selection -->
                             <div class="mb-3">
-                                <label for="serviceSelect" class="form-label">Select Service <span class="text-danger">*</span></label>
-                                <select id="serviceSelect" class="form-select" required>
-                                    <option value="">Choose a service...</option>
+                                <label for="bookingService" class="form-label">Service</label>
+                                <select class="form-select" id="bookingService" required>
+                                    <option value="">Select Service...</option>
                                 </select>
                             </div>
 
                             <!-- Specialist Selection -->
                             <div class="mb-3">
-                                <label for="specialistSelect" class="form-label">Select Specialist <span class="text-danger">*</span></label>
-                                <select id="specialistSelect" class="form-select" required>
-                                    <option value="">Choose a specialist...</option>
+                                <label for="bookingSpecialist" class="form-label">Specialist</label>
+                                <select class="form-select" id="bookingSpecialist" required>
+                                    <option value="">Select Specialist...</option>
                                 </select>
                             </div>
 
-                            <!-- Date and Time Selection -->
+                            <!-- Date Selection -->
                             <div class="mb-3">
-                                <label for="appointmentDateTime" class="form-label">Appointment Date & Time <span class="text-danger">*</span></label>
-                                <input type="datetime-local" id="appointmentDateTime" class="form-control" required>
+                                <label for="bookingDate" class="form-label">Date</label>
+                                <input type="date" class="form-control" id="bookingDate" required>
+                            </div>
+
+                            <!-- Time Selection -->
+                            <div class="mb-3">
+                                <label for="bookingTime" class="form-label">Time</label>
+                                <input type="time" class="form-control" id="bookingTime" required>
                             </div>
 
                             <!-- Submit Button -->
-                            <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-primary">Book Appointment</button>
-                            </div>
-
-                            <!-- Loading/Status Message -->
-                            <div id="statusMessage" class="mt-3"></div>
+                            <button type="submit" class="btn btn-primary w-100">Confirm Booking</button>
                         </form>
                     </div>
                 </div>
