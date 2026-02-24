@@ -1,5 +1,10 @@
 import { supabase } from '../services/supabaseClient.js';
 
+// Business hours and slot duration constants
+const WORK_START = 10;
+const WORK_END = 18;
+const SLOT_DURATION = 60; // in minutes
+
 /**
  * Check for active session and redirect to login if necessary
  */
@@ -29,6 +34,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await loadFormOptions();
     setupFormSubmission();
+    setupTimeSlotListeners();
   } catch (error) {
     console.error('Error initializing booking page:', error);
     showBookingMessage('Error loading booking form. Please refresh the page.', 'danger');
@@ -130,6 +136,134 @@ async function loadSpecialists() {
 }
 
 /**
+ * Setup time slot change event listeners
+ */
+function setupTimeSlotListeners() {
+  const serviceSelect = document.getElementById('bookingService');
+  const specialistSelect = document.getElementById('bookingSpecialist');
+  const dateInput = document.getElementById('bookingDate');
+
+  if (serviceSelect) {
+    serviceSelect.addEventListener('change', generateTimeSlots);
+  }
+  if (specialistSelect) {
+    specialistSelect.addEventListener('change', generateTimeSlots);
+  }
+  if (dateInput) {
+    dateInput.addEventListener('change', generateTimeSlots);
+  }
+}
+
+/**
+ * Generate and display available time slots
+ */
+async function generateTimeSlots() {
+  try {
+    const serviceVal = document.getElementById('bookingService').value;
+    const specialistVal = document.getElementById('bookingSpecialist').value;
+    const dateVal = document.getElementById('bookingDate').value;
+    const container = document.getElementById('timeSlotsContainer');
+
+    // Clear the hidden time input when selections change
+    document.getElementById('bookingTime').value = '';
+
+    // If any required field is empty, show the initial message
+    if (!serviceVal || !specialistVal || !dateVal) {
+      container.innerHTML = '<p class="text-muted small w-100 text-center mb-0">Please select a Service, Specialist, and Date first to see available times.</p>';
+      return;
+    }
+
+    // Show loading message
+    container.innerHTML = '<p class="text-muted small w-100 text-center mb-0">Loading available slots...</p>';
+
+    // Fetch existing bookings for the specialist on the selected date
+    const { data: bookings, error: bookingsError } = await supabase
+      .from('bookings')
+      .select('appointment_date, services(duration_minutes)')
+      .eq('employee_id', specialistVal)
+      .gte('appointment_date', `${dateVal}T00:00:00`)
+      .lte('appointment_date', `${dateVal}T23:59:59`)
+      .neq('status', 'cancelled');
+
+    if (bookingsError) {
+      console.error('Error fetching bookings:', bookingsError);
+      container.innerHTML = '<p class="text-danger small w-100 text-center mb-0">Error loading available times. Please try again.</p>';
+      return;
+    }
+
+    // Generate time slots
+    const slots = [];
+    for (let hour = WORK_START; hour < WORK_END; hour++) {
+      const timeString = `${String(hour).padStart(2, '0')}:00`;
+      slots.push({ hour, timeString });
+    }
+
+    // Get today's date to check for past times
+    const today = new Date();
+    const selectedDate = new Date(`${dateVal}T00:00:00`);
+    const isToday = today.toDateString() === selectedDate.toDateString();
+    const now = new Date();
+
+    // Render time slot buttons
+    let slotsHTML = '';
+
+    slots.forEach(slot => {
+      const slotStartTime = new Date(`${dateVal}T${slot.timeString}:00`);
+      const slotEndTime = new Date(slotStartTime.getTime() + SLOT_DURATION * 60000);
+
+      // Check if slot is in the past
+      const isPast = isToday && slotStartTime < now;
+
+      // Check for overlaps with existing bookings
+      let isOverlapping = false;
+      if (bookings && bookings.length > 0) {
+        isOverlapping = bookings.some(booking => {
+          const bookingStartTime = new Date(booking.appointment_date);
+          const bookingDuration = booking.services?.duration_minutes || 60;
+          const bookingEndTime = new Date(bookingStartTime.getTime() + bookingDuration * 60000);
+
+          return (slotStartTime < bookingEndTime) && (slotEndTime > bookingStartTime);
+        });
+      }
+
+      // Render button based on availability
+      if (isPast || isOverlapping) {
+        slotsHTML += `<button type="button" class="btn btn-danger btn-sm" style="width: 75px;" disabled>${slot.timeString}</button>`;
+      } else {
+        slotsHTML += `<button type="button" class="btn btn-outline-success btn-sm time-slot-btn" data-time="${slot.timeString}" style="width: 75px;">${slot.timeString}</button>`;
+      }
+    });
+
+    container.innerHTML = slotsHTML;
+
+    // Attach click listeners to time slot buttons
+    const timeSlotButtons = document.querySelectorAll('.time-slot-btn');
+    timeSlotButtons.forEach(button => {
+      button.addEventListener('click', (e) => {
+        e.preventDefault();
+
+        // Remove highlighting from all buttons
+        timeSlotButtons.forEach(btn => {
+          btn.classList.remove('btn-success', 'text-white');
+          btn.classList.add('btn-outline-success');
+        });
+
+        // Highlight the clicked button
+        button.classList.remove('btn-outline-success');
+        button.classList.add('btn-success', 'text-white');
+
+        // Set the hidden time input value
+        document.getElementById('bookingTime').value = button.dataset.time;
+      });
+    });
+  } catch (error) {
+    console.error('Error generating time slots:', error);
+    const container = document.getElementById('timeSlotsContainer');
+    container.innerHTML = '<p class="text-danger small w-100 text-center mb-0">Error loading available times. Please try again.</p>';
+  }
+}
+
+/**
  * Setup form submission handler
  */
 function setupFormSubmission() {
@@ -180,7 +314,8 @@ async function submitBooking() {
     }
 
     // Combine date and time into a valid PostgreSQL timestamp
-    const appointmentDate = new Date(`${dateVal}T${timeVal}`).toISOString();
+    const appointmentDateTime = `${dateVal}T${timeVal}:00`;
+    const appointmentDate = new Date(appointmentDateTime).toISOString();
 
     // Create booking object
     const booking = {

@@ -74,9 +74,10 @@
                             </div>
 
                             <!-- Time Selection -->
-                            <div class="mb-3">
-                                <label for="bookingTime" class="form-label">Time</label>
-                                <input type="time" class="form-control" id="bookingTime" required>
+                            <label class="form-label fw-bold mt-3">Select Time</label>
+                            <input type="hidden" id="bookingTime" required>
+                            <div id="timeSlotsContainer" class="d-flex flex-wrap gap-2 mb-3 p-3 bg-light border rounded">
+                              <p class="text-muted small w-100 text-center mb-0">Please select a Service, Specialist, and Date first to see available times.</p>
                             </div>
 
                             <!-- Submit Button -->
