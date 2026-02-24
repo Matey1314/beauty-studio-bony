@@ -604,6 +604,11 @@ async function loadUsers() {
       const phone = user.phone || 'N/A';
       const role = user.role || 'client';
 
+      let actionsHtml = `<button class="btn btn-sm btn-success rounded-pill save-role-btn" data-user-id="${user.id}">Save Role</button>`;
+      if (user.role === 'staff' || user.role === 'admin') {
+        actionsHtml += ` <button class="btn btn-sm btn-outline-primary rounded-pill edit-staff-btn" data-user-id="${user.id}" data-avatar="${user.avatar_url || ''}" data-bio="${user.bio || ''}">Edit Details</button>`;
+      }
+
       row.innerHTML = `
         <td>${fullName}</td>
         <td>${phone}</td>
@@ -615,9 +620,7 @@ async function loadUsers() {
           </select>
         </td>
         <td>
-          <button class="btn btn-sm btn-primary save-role-btn" data-user-id="${user.id}">
-            Save Role
-          </button>
+          ${actionsHtml}
         </td>
       `;
 
@@ -634,6 +637,27 @@ async function loadUsers() {
         await updateUserRole(userId, selectedRole);
       });
     });
+
+    // Add event listeners to all Edit Details buttons
+    document.querySelectorAll('.edit-staff-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const userId = e.target.getAttribute('data-user-id');
+        const avatar = e.target.getAttribute('data-avatar') || '';
+        const bio = e.target.getAttribute('data-bio') || '';
+
+        // Populate modal form fields
+        document.getElementById('staffId').value = userId;
+        document.getElementById('staffAvatar').value = avatar;
+        document.getElementById('staffBio').value = bio;
+
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('editStaffModal'));
+        modal.show();
+      });
+    });
+
+    // Setup Edit Staff Form submission
+    setupEditStaffFormListener();
   } catch (error) {
     console.error('Unexpected error loading users:', error);
   }
@@ -662,4 +686,59 @@ async function updateUserRole(userId, role) {
     console.error('Unexpected error updating user role:', error);
     alert('An error occurred while updating the user role');
   }
+}
+
+/**
+ * Setup event listener for the Edit Staff Form
+ */
+function setupEditStaffFormListener() {
+  const editStaffForm = document.getElementById('editStaffForm');
+  
+  if (!editStaffForm) {
+    console.error('Edit Staff Form not found');
+    return;
+  }
+
+  editStaffForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const staffId = document.getElementById('staffId').value;
+    const avatarUrl = document.getElementById('staffAvatar').value.trim();
+    const bio = document.getElementById('staffBio').value.trim();
+
+    if (!staffId) {
+      alert('Staff ID is missing');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          avatar_url: avatarUrl,
+          bio: bio
+        })
+        .eq('id', staffId);
+
+      if (error) {
+        console.error('Error updating staff details:', error);
+        alert('Failed to update staff details');
+        return;
+      }
+
+      alert('Staff details updated successfully!');
+      
+      // Close modal
+      const modal = bootstrap.Modal.getInstance(document.getElementById('editStaffModal'));
+      if (modal) {
+        modal.hide();
+      }
+
+      // Reload users to show updated details
+      await loadUsers();
+    } catch (error) {
+      console.error('Unexpected error updating staff details:', error);
+      alert('An error occurred while updating staff details');
+    }
+  });
 }
