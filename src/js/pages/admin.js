@@ -606,7 +606,7 @@ async function loadUsers() {
 
       let actionsHtml = `<button class="btn btn-sm btn-success rounded-pill save-role-btn" data-user-id="${user.id}">Save Role</button>`;
       if (user.role === 'staff' || user.role === 'admin') {
-        actionsHtml += ` <button class="btn btn-sm btn-outline-primary rounded-pill edit-staff-btn" data-user-id="${user.id}" data-avatar="${user.avatar_url || ''}" data-bio="${user.bio || ''}">Edit Details</button>`;
+        actionsHtml += ` <button class="btn btn-sm btn-outline-primary rounded-pill edit-staff-btn" data-id="${user.id}" data-avatar="${user.avatar_url || ''}" data-bio="${user.bio || ''}">Edit Details</button>`;
       }
 
       row.innerHTML = `
@@ -693,71 +693,73 @@ async function updateUserRole(userId, role) {
  */
 function setupEditStaffFormListener() {
   const editStaffForm = document.getElementById('editStaffForm');
-  
-  if (!editStaffForm) {
-    console.error('Edit Staff Form not found');
-    return;
-  }
+  if (editStaffForm) {
+    editStaffForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      console.log("--- 1. Form submit intercepted ---");
 
-  editStaffForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
+      const staffIdVal = document.getElementById('staffId').value;
+      const bioVal = document.getElementById('staffBio').value;
+      const fileInput = document.getElementById('staffAvatarFile');
+      const file = fileInput.files[0];
+      const submitBtn = e.target.querySelector('button[type="submit"]');
 
-    const staffIdVal = document.getElementById('staffId').value;
-    const bioVal = document.getElementById('staffBio').value.trim();
-    const fileInput = document.getElementById('staffAvatarFile');
-    const file = fileInput.files[0];
+      console.log("2. Data gathered. Staff ID:", staffIdVal, "| File:", file ? file.name : "None");
 
-    if (!staffIdVal) {
-      alert('Staff ID is missing');
-      return;
-    }
+      const originalBtnText = submitBtn.innerHTML;
+      submitBtn.innerHTML = 'Uploading... Please wait';
+      submitBtn.disabled = true;
 
-    let avatarUrl = document.querySelector(`.edit-staff-btn[data-user-id="${staffIdVal}"]`).getAttribute('data-avatar'); // keep existing if no new file
+      try {
+        const staffBtn = document.querySelector(`.edit-staff-btn[data-id="${staffIdVal}"]`);
+        let avatarUrl = staffBtn ? staffBtn.getAttribute('data-avatar') : '';
+        console.log("3. Existing avatar URL:", avatarUrl);
 
-    try {
-      // If user selected a new file, upload it
-      if (file) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${staffIdVal}-${Date.now()}.${fileExt}`; // Unique name
-        
-        // Upload to Supabase Storage
-        const { error: uploadError } = await supabase.storage
-          .from('avatars')
-          .upload(fileName, file, { cacheControl: '3600', upsert: false });
+        if (file) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${staffIdVal}-${Date.now()}.${fileExt}`;
+          console.log("4. Starting upload to Supabase bucket 'avatars' as:", fileName);
           
-        if (uploadError) {
-          throw uploadError;
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('avatars')
+            .upload(fileName, file);
+            
+          console.log("5. Upload response:", { uploadData, uploadError });
+
+          if (uploadError) throw new Error("Supabase Upload failed: " + uploadError.message);
+
+          console.log("6. Requesting public URL...");
+          const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
+          avatarUrl = urlData.publicUrl;
+          console.log("7. Public URL obtained:", avatarUrl);
         }
 
-        // Get the public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from('avatars')
-          .getPublicUrl(fileName);
-          
-        avatarUrl = publicUrl;
+        console.log("8. Updating 'profiles' table in database...");
+        const { error: updateError } = await supabase.from('profiles').update({ avatar_url: avatarUrl, bio: bioVal }).eq('id', staffIdVal);
+        
+        console.log("9. Database update error status:", updateError);
+        if (updateError) throw updateError;
+
+        console.log("10. Everything successful. Closing modal...");
+        
+        // Safe modal hide
+        const modalEl = document.getElementById('editStaffModal');
+        let modalInstance = bootstrap.Modal.getInstance(modalEl);
+        if (!modalInstance) modalInstance = new bootstrap.Modal(modalEl);
+        modalInstance.hide();
+        
+        alert('Staff details updated successfully!');
+        editStaffForm.reset();
+        await loadUsers();
+
+      } catch (error) {
+        console.error('CRITICAL ERROR CAUGHT:', error);
+        alert("Error: " + error.message);
+      } finally {
+        console.log("11. Restoring button state");
+        submitBtn.innerHTML = originalBtnText;
+        submitBtn.disabled = false;
       }
-
-      // Update the profiles table
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ avatar_url: avatarUrl, bio: bioVal })
-        .eq('id', staffIdVal);
-      
-      if (updateError) throw updateError;
-
-      // Success
-      const modal = bootstrap.Modal.getInstance(document.getElementById('editStaffModal'));
-      if (modal) {
-        modal.hide();
-      }
-      
-      alert('Staff details updated successfully!');
-      document.getElementById('editStaffForm').reset();
-      await loadUsers();
-
-    } catch (error) {
-      console.error('Error updating staff details:', error);
-      alert('Failed to update details: ' + error.message);
-    }
-  });
+    });
+  }
 }
