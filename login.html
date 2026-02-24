@@ -42,7 +42,7 @@
 
     <!-- Main Container -->
     <main class="container mt-4">
-        <h1>Account Management</h1>
+        <h2 class="fw-bold mb-4 text-center">Account Management</h2>
         
         <!-- Auth Message Placeholder -->
         <div id="authMessage"></div>
@@ -51,21 +51,21 @@
         <div class="row mt-4">
             <!-- Left Column: Log In -->
             <div class="col-md-6">
-                <div class="card">
+                <div class="card shadow-lg border-0 rounded-4 overflow-hidden mb-4">
                     <div class="card-header bg-dark text-white">
                         <h4 class="mb-0">Log In</h4>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body p-4">
                         <form id="loginForm">
                             <div class="mb-3">
                                 <label for="loginEmail" class="form-label">Email</label>
-                                <input type="email" class="form-control" id="loginEmail" name="email" required>
+                                <input type="email" class="form-control form-control-lg bg-light" id="loginEmail" name="email" required>
                             </div>
                             <div class="mb-3">
                                 <label for="loginPassword" class="form-label">Password</label>
-                                <input type="password" class="form-control" id="loginPassword" name="password" required>
+                                <input type="password" class="form-control form-control-lg bg-light" id="loginPassword" name="password" required>
                             </div>
-                            <button type="submit" class="btn btn-dark w-100">Log In</button>
+                            <button type="submit" class="btn btn-dark btn-lg rounded-pill fw-bold w-100 mt-3">Log In</button>
                         </form>
                     </div>
                 </div>
@@ -73,25 +73,25 @@
 
             <!-- Right Column: Register -->
             <div class="col-md-6">
-                <div class="card">
+                <div class="card shadow-lg border-0 rounded-4 overflow-hidden mb-4">
                     <div class="card-header bg-dark text-white">
                         <h4 class="mb-0">Register</h4>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body p-4">
                         <form id="registerForm">
                             <div class="mb-3">
                                 <label for="registerFullName" class="form-label">Full Name</label>
-                                <input type="text" class="form-control" id="registerFullName" name="fullName" required>
+                                <input type="text" class="form-control form-control-lg bg-light" id="registerFullName" name="fullName" required>
                             </div>
                             <div class="mb-3">
                                 <label for="registerEmail" class="form-label">Email</label>
-                                <input type="email" class="form-control" id="registerEmail" name="email" required>
+                                <input type="email" class="form-control form-control-lg bg-light" id="registerEmail" name="email" required>
                             </div>
                             <div class="mb-3">
                                 <label for="registerPassword" class="form-label">Password</label>
-                                <input type="password" class="form-control" id="registerPassword" name="password" required>
+                                <input type="password" class="form-control form-control-lg bg-light" id="registerPassword" name="password" required>
                             </div>
-                            <button type="submit" class="btn btn-dark w-100">Register</button>
+                            <button type="submit" class="btn btn-dark btn-lg rounded-pill fw-bold w-100 mt-3">Register</button>
                         </form>
                     </div>
                 </div>
