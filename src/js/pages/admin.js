@@ -641,18 +641,23 @@ async function loadUsers() {
     // Add event listeners to all Edit Details buttons
     document.querySelectorAll('.edit-staff-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
-        const userId = e.target.getAttribute('data-user-id');
-        const bio = e.target.getAttribute('data-bio') || '';
+        // Handle click on icon inside button if present
+        const targetBtn = e.target.closest('.edit-staff-btn'); 
+        if (!targetBtn) return;
 
-        // Populate modal form fields
-        document.getElementById('staffId').value = userId;
-        document.getElementById('staffBio').value = bio;
-        // Reset file input
-        document.getElementById('staffAvatarFile').value = '';
+        const id = targetBtn.getAttribute('data-id');
+        const bio = targetBtn.getAttribute('data-bio');
 
-        // Show modal
-        const modal = new bootstrap.Modal(document.getElementById('editStaffModal'));
-        modal.show();
+        // Populate the modal fields
+        document.getElementById('staffId').value = id;
+        document.getElementById('staffBio').value = bio !== 'null' && bio !== 'undefined' ? bio : '';
+        document.getElementById('staffAvatarFile').value = ''; // Reset file input
+
+        // Show the modal
+        const modalEl = document.getElementById('editStaffModal');
+        let modalInstance = bootstrap.Modal.getInstance(modalEl);
+        if (!modalInstance) modalInstance = new bootstrap.Modal(modalEl);
+        modalInstance.show();
       });
     });
 
