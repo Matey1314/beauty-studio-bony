@@ -179,6 +179,15 @@ async function loadModalOptions() {
         specialistSelect.appendChild(option);
       });
     }
+
+    // Initialize Flatpickr for the edit modal date/time input
+    flatpickr('#editDateTime', {
+      enableTime: true,
+      minDate: 'today',
+      dateFormat: 'Y-m-dTH:i',
+      altInput: true,
+      altFormat: 'F j, Y at h:i K'
+    });
   } catch (error) {
     console.error('Error loading modal options:', error);
   }

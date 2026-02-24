@@ -183,10 +183,28 @@ async function loadManualBookingOptions() {
       }
     }
 
+    // Initialize Flatpickr for manual date picker
+    initializeFlatpickr();
+
     // Setup manual booking form listener
     setupManualBookingFormListener();
   } catch (error) {
     console.error('Unexpected error loading manual booking options:', error);
+  }
+}
+
+/**
+ * Initialize Flatpickr for the manual booking date picker
+ */
+function initializeFlatpickr() {
+  const manualDateInput = document.getElementById('manualDate');
+  if (manualDateInput && window.flatpickr) {
+    flatpickr(manualDateInput, {
+      minDate: "today",
+      dateFormat: "Y-m-d",
+      altInput: true,
+      altFormat: "F j, Y"
+    });
   }
 }
 

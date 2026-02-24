@@ -6,6 +6,9 @@
     <title>Beauty Studio Bony - Admin Panel</title>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Flatpickr CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/airbnb.css">
 </head>
 <body>
     <!-- Navigation Bar -->
@@ -47,11 +50,11 @@
 
         <!-- Manage Services Section (Admin Only) -->
         <section id="adminServicesSection" class="mt-4 d-none">
-            <div class="card">
+            <div class="card shadow-lg border-0 rounded-4 overflow-hidden mb-5">
                 <div class="card-header">
                     <h3 class="card-title">Manage Services</h3>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-4">
                     <!-- Add New Service Form -->
                     <div class="row mb-4">
                         <div class="col-md-6">
@@ -59,27 +62,27 @@
                             <form id="addServiceForm">
                                 <div class="mb-3">
                                     <label for="serviceName" class="form-label">Service Name</label>
-                                    <input type="text" class="form-control" id="serviceName" placeholder="e.g., Haircut" required>
+                                    <input type="text" class="form-control form-control-lg" id="serviceName" placeholder="e.g., Haircut" required>
                                 </div>
                                 <div class="mb-3">
                                     <label for="serviceDescription" class="form-label">Description</label>
-                                    <textarea class="form-control" id="serviceDescription" placeholder="Service description" rows="3" required></textarea>
+                                    <textarea class="form-control form-control-lg" id="serviceDescription" placeholder="Service description" rows="3" required></textarea>
                                 </div>
                                 <div class="mb-3">
                                     <label for="servicePrice" class="form-label">Price ($)</label>
-                                    <input type="number" class="form-control" id="servicePrice" placeholder="0.00" step="0.01" min="0" required>
+                                    <input type="number" class="form-control form-control-lg" id="servicePrice" placeholder="0.00" step="0.01" min="0" required>
                                 </div>
                                 <div class="mb-3">
                                     <label for="serviceDuration" class="form-label">Duration (minutes)</label>
-                                    <input type="number" class="form-control" id="serviceDuration" placeholder="30" min="1" required>
+                                    <input type="number" class="form-control form-control-lg" id="serviceDuration" placeholder="30" min="1" required>
                                 </div>
                                 <div class="mb-3">
                                     <label for="serviceSpecialist" class="form-label">Specialist</label>
-                                    <select id="serviceSpecialist" class="form-select mb-3" required>
+                                    <select id="serviceSpecialist" class="form-select form-select-lg mb-3" required>
                                         <option value="">Select Specialist...</option>
                                     </select>
                                 </div>
-                                <button type="submit" class="btn btn-primary w-100">Add Service</button>
+                                <button type="submit" class="btn btn-primary btn-lg rounded-pill w-100">Add Service</button>
                             </form>
                         </div>
                     </div>
@@ -89,7 +92,7 @@
                         <div class="col-12">
                             <h5>Services List</h5>
                             <div class="table-responsive">
-                                <table class="table table-striped table-hover">
+                                <table class="table table-striped table-hover align-middle">
                                     <thead class="table-dark">
                                         <tr>
                                             <th>Name</th>
@@ -113,13 +116,13 @@
 
         <!-- Manage Users Section (Admin Only) -->
         <section id="manageUsersSection" class="mt-4 d-none">
-            <div class="card">
+            <div class="card shadow-lg border-0 rounded-4 overflow-hidden mb-5">
                 <div class="card-header">
                     <h3 class="card-title">Manage Users</h3>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-4">
                     <div class="table-responsive mt-3">
-                        <table class="table table-bordered table-striped">
+                        <table class="table table-bordered table-striped table-hover align-middle">
                             <thead>
                                 <tr>
                                     <th>Name</th>
@@ -136,15 +139,15 @@
         </section>
 
         <!-- My Schedule / Bookings Section (Admin and Staff) -->
-        <div id="adminScheduleSection" class="card mb-4" style="display: none;">
+        <div id="adminScheduleSection" class="card shadow-lg border-0 rounded-4 overflow-hidden mb-5" style="display: none;">
             <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
                 <h4 class="mb-0">My Schedule</h4>
-                <button class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#manualBookingModal">+ Add Booking / Block Time</button>
+                <button class="btn btn-sm btn-light rounded-pill" data-bs-toggle="modal" data-bs-target="#manualBookingModal">+ Add Booking / Block Time</button>
             </div>
-            <div class="card-body">
+            <div class="card-body p-4">
                 <p class="text-muted">Manage your upcoming appointments.</p>
                 <div class="table-responsive">
-                    <table class="table table-bordered table-striped align-middle">
+                    <table class="table table-bordered table-striped table-hover align-middle">
                         <thead class="table-light">
                             <tr>
                                 <th>Date & Time</th>
@@ -166,7 +169,7 @@
     <!-- Manual Booking Modal -->
     <div class="modal fade" id="manualBookingModal" tabindex="-1">
         <div class="modal-dialog">
-            <div class="modal-content">
+            <div class="modal-content border-0 rounded-4">
                 <div class="modal-header">
                     <h5 class="modal-title">Add Appointment</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -175,19 +178,19 @@
                     <form id="manualBookingForm">
                         <div class="mb-3">
                             <label for="manualClient" class="form-label">Client (Select yourself to block time)</label>
-                            <select id="manualClient" class="form-select" required></select>
+                            <select id="manualClient" class="form-select form-select-lg" required></select>
                         </div>
                         <div class="mb-3">
                             <label for="manualService" class="form-label">Service</label>
-                            <select id="manualService" class="form-select" required></select>
+                            <select id="manualService" class="form-select form-select-lg" required></select>
                         </div>
                         <div class="mb-3">
                             <label for="manualDate" class="form-label">Date</label>
-                            <input type="date" id="manualDate" class="form-control" required>
+                            <input type="text" id="manualDate" class="form-control form-control-lg bg-white" placeholder="Select date..." readonly required>
                         </div>
                         <div class="mb-3">
                             <label for="manualTime" class="form-label">Time (e.g. 10:00, 11:00)</label>
-                            <select id="manualTime" class="form-select" required>
+                            <select id="manualTime" class="form-select form-select-lg" required>
                                 <option value="10:00">10:00</option>
                                 <option value="11:00">11:00</option>
                                 <option value="12:00">12:00</option>
@@ -198,12 +201,14 @@
                                 <option value="17:00">17:00</option>
                             </select>
                         </div>
-                        <button type="submit" class="btn btn-primary w-100">Save Appointment</button>
+                        <button type="submit" class="btn btn-primary btn-lg rounded-pill w-100">Save Appointment</button>
                     </form>
                 </div>
             </div>
         </div>
     </div>
+    <!-- Flatpickr JS -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Session Management -->
     <script type="module" src="./src/js/services/session.js"></script>
