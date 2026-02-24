@@ -642,13 +642,13 @@ async function loadUsers() {
     document.querySelectorAll('.edit-staff-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const userId = e.target.getAttribute('data-user-id');
-        const avatar = e.target.getAttribute('data-avatar') || '';
         const bio = e.target.getAttribute('data-bio') || '';
 
         // Populate modal form fields
         document.getElementById('staffId').value = userId;
-        document.getElementById('staffAvatar').value = avatar;
         document.getElementById('staffBio').value = bio;
+        // Reset file input
+        document.getElementById('staffAvatarFile').value = '';
 
         // Show modal
         const modal = new bootstrap.Modal(document.getElementById('editStaffModal'));
@@ -702,43 +702,62 @@ function setupEditStaffFormListener() {
   editStaffForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const staffId = document.getElementById('staffId').value;
-    const avatarUrl = document.getElementById('staffAvatar').value.trim();
-    const bio = document.getElementById('staffBio').value.trim();
+    const staffIdVal = document.getElementById('staffId').value;
+    const bioVal = document.getElementById('staffBio').value.trim();
+    const fileInput = document.getElementById('staffAvatarFile');
+    const file = fileInput.files[0];
 
-    if (!staffId) {
+    if (!staffIdVal) {
       alert('Staff ID is missing');
       return;
     }
 
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          avatar_url: avatarUrl,
-          bio: bio
-        })
-        .eq('id', staffId);
+    let avatarUrl = document.querySelector(`.edit-staff-btn[data-user-id="${staffIdVal}"]`).getAttribute('data-avatar'); // keep existing if no new file
 
-      if (error) {
-        console.error('Error updating staff details:', error);
-        alert('Failed to update staff details');
-        return;
+    try {
+      // If user selected a new file, upload it
+      if (file) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${staffIdVal}-${Date.now()}.${fileExt}`; // Unique name
+        
+        // Upload to Supabase Storage
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(fileName, file, { cacheControl: '3600', upsert: false });
+          
+        if (uploadError) {
+          throw uploadError;
+        }
+
+        // Get the public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(fileName);
+          
+        avatarUrl = publicUrl;
       }
 
-      alert('Staff details updated successfully!');
+      // Update the profiles table
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: avatarUrl, bio: bioVal })
+        .eq('id', staffIdVal);
       
-      // Close modal
+      if (updateError) throw updateError;
+
+      // Success
       const modal = bootstrap.Modal.getInstance(document.getElementById('editStaffModal'));
       if (modal) {
         modal.hide();
       }
-
-      // Reload users to show updated details
+      
+      alert('Staff details updated successfully!');
+      document.getElementById('editStaffForm').reset();
       await loadUsers();
+
     } catch (error) {
-      console.error('Unexpected error updating staff details:', error);
-      alert('An error occurred while updating staff details');
+      console.error('Error updating staff details:', error);
+      alert('Failed to update details: ' + error.message);
     }
   });
 }

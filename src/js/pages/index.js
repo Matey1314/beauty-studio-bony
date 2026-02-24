@@ -7,6 +7,12 @@ import { supabase } from '../services/supabaseClient.js';
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         await loadServices();
+        
+        // Load team members when team modal is shown
+        const teamModal = document.getElementById('teamModal');
+        if (teamModal) {
+            teamModal.addEventListener('show.bs.modal', loadTeamMembers);
+        }
     } catch (error) {
         console.error('Error initializing home page:', error);
         showMessage('Error loading services. Please refresh the page.', 'danger');
@@ -60,6 +66,35 @@ async function loadServices() {
         console.error('Error loading services:', error);
         showMessage('Error loading services. Please try again later.', 'danger');
     }
+}
+
+/**
+ * Load team members from database
+ */
+async function loadTeamMembers() {
+    const container = document.getElementById('teamMembersContainer');
+    if (!container) return;
+    
+    const { data: staff, error } = await supabase.from('profiles').select('*').in('role', ['staff', 'admin']);
+    if (error || !staff) {
+        container.innerHTML = '<p class="text-center text-danger">Could not load team members.</p>';
+        return;
+    }
+    
+    container.innerHTML = '';
+    staff.forEach(member => {
+        const avatar = member.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(member.full_name) + '&background=random&size=150';
+        const bio = member.bio || 'Professional beauty specialist ready to take care of you.';
+        
+        container.innerHTML += `
+        <div class="col-md-6 text-center">
+            <div class="bg-white p-4 rounded-4 shadow-sm h-100">
+                <img src="${avatar}" alt="${member.full_name}" class="rounded-circle mb-3 shadow" style="width: 150px; height: 150px; object-fit: cover; border: 4px solid #fff;">
+                <h4 class="fw-bold mb-1">${member.full_name}</h4>
+                <p class="text-muted small">${bio}</p>
+            </div>
+        </div>`;
+    });
 }
 
 /**
