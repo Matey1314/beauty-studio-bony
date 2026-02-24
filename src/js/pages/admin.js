@@ -42,11 +42,13 @@ async function initializeDashboard(session) {
       if (servicesSec) servicesSec.style.display = 'none';
       if (usersSec) usersSec.style.display = 'none';
       if (scheduleSec) scheduleSec.style.display = 'block';
+      await loadManualBookingOptions();
       await loadSchedule(session);
     } else if (userRole === 'admin') {
       if (servicesSec) servicesSec.style.display = 'block';
       if (usersSec) usersSec.style.display = 'block';
       if (scheduleSec) scheduleSec.style.display = 'block';
+      await loadManualBookingOptions();
       await loadSpecialists();
       await loadServices();
       await loadUsers();
@@ -124,6 +126,171 @@ async function loadSpecialists() {
   } catch (error) {
     console.error('Unexpected error loading specialists:', error);
   }
+}
+
+/**
+ * Load clients and services for the manual booking form
+ */
+async function loadManualBookingOptions() {
+  try {
+    // Fetch all users (for client selection)
+    const { data: users, error: usersError } = await supabase
+      .from('profiles')
+      .select('id, full_name, phone')
+      .order('full_name', { ascending: true });
+
+    if (usersError) {
+      console.error('Error fetching users:', usersError);
+      return;
+    }
+
+    // Fetch all services
+    const { data: services, error: servicesError } = await supabase
+      .from('services')
+      .select('id, name')
+      .order('name', { ascending: true });
+
+    if (servicesError) {
+      console.error('Error fetching services:', servicesError);
+      return;
+    }
+
+    // Populate client dropdown
+    const clientSelect = document.getElementById('manualClient');
+    if (clientSelect) {
+      clientSelect.innerHTML = '<option value="">Select Client...</option>';
+      if (users && users.length > 0) {
+        users.forEach(user => {
+          const option = document.createElement('option');
+          option.value = user.id;
+          option.textContent = `${user.full_name} (${user.phone || 'N/A'})`;
+          clientSelect.appendChild(option);
+        });
+      }
+    }
+
+    // Populate service dropdown
+    const serviceSelect = document.getElementById('manualService');
+    if (serviceSelect) {
+      serviceSelect.innerHTML = '<option value="">Select Service...</option>';
+      if (services && services.length > 0) {
+        services.forEach(service => {
+          const option = document.createElement('option');
+          option.value = service.id;
+          option.textContent = service.name;
+          serviceSelect.appendChild(option);
+        });
+      }
+    }
+
+    // Setup manual booking form listener
+    setupManualBookingFormListener();
+  } catch (error) {
+    console.error('Unexpected error loading manual booking options:', error);
+  }
+}
+
+/**
+ * Setup event listener for the manual booking form
+ */
+function setupManualBookingFormListener() {
+  const form = document.getElementById('manualBookingForm');
+
+  if (!form) {
+    console.error('Manual booking form not found');
+    return;
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const clientVal = document.getElementById('manualClient').value.trim();
+    const serviceVal = document.getElementById('manualService').value.trim();
+    const dateVal = document.getElementById('manualDate').value.trim();
+    const timeVal = document.getElementById('manualTime').value.trim();
+
+    if (!clientVal || !serviceVal || !dateVal || !timeVal) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('Session expired. Please log in again.');
+        return;
+      }
+
+      // Construct the ISO timestamp
+      const appointmentDate = new Date(`${dateVal}T${timeVal}`).toISOString();
+
+      // Fetch user role for employee assignment
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single();
+      const userRole = profile?.role;
+
+      // Check for existing overlapping bookings
+      const employeeIdToBook = userRole === 'staff' ? session.user.id : session.user.id;
+
+      const { data: existingBookings, error: checkError } = await supabase
+        .from('bookings')
+        .select('id')
+        .eq('employee_id', employeeIdToBook)
+        .eq('appointment_date', appointmentDate)
+        .neq('status', 'cancelled');
+
+      if (checkError) {
+        console.error("Error checking existing bookings:", checkError);
+        alert("An error occurred while checking availability.");
+        return;
+      }
+
+      if (existingBookings && existingBookings.length > 0) {
+        alert("Warning: This time slot is already booked or blocked! Please select another time.");
+        return;
+      }
+
+      // Insert the booking (employee_id is the current logged-in user)
+      const { error } = await supabase
+        .from('bookings')
+        .insert([
+          {
+            client_id: clientVal,
+            employee_id: session.user.id,
+            service_id: serviceVal,
+            appointment_date: appointmentDate,
+            status: 'confirmed'
+          }
+        ]);
+
+      if (error) {
+        console.error('Error adding booking:', error);
+        alert('Failed to add appointment');
+        return;
+      }
+
+      // Hide modal
+      const modalElement = document.getElementById('manualBookingModal');
+      const modalInstance = bootstrap.Modal.getInstance(modalElement);
+      if (modalInstance) {
+        modalInstance.hide();
+      }
+
+      alert('Appointment added successfully!');
+
+      // Clear form
+      form.reset();
+
+      // Reload schedule
+      await loadSchedule(session);
+    } catch (error) {
+      console.error('Unexpected error adding appointment:', error);
+      alert('An error occurred while adding the appointment');
+    }
+  });
 }
 
 /**
