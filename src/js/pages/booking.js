@@ -48,6 +48,7 @@ async function loadFormOptions() {
   try {
     await loadServices();
     await loadSpecialists();
+    initializeFlatpickr();
   } catch (error) {
     console.error('Error loading form options:', error);
     showBookingMessage('Error loading form options. Please refresh the page.', 'danger');
@@ -152,6 +153,23 @@ function setupTimeSlotListeners() {
   if (dateInput) {
     dateInput.addEventListener('change', generateTimeSlots);
   }
+}
+
+/**
+ * Initialize Flatpickr date picker
+ */
+function initializeFlatpickr() {
+  flatpickr("#bookingDate", {
+    minDate: "today", // Prevents booking in the past
+    dateFormat: "Y-m-d", // Matches our Supabase logic
+    altInput: true,
+    altFormat: "F j, Y", // Beautiful display format (e.g., February 24, 2026)
+    onChange: function(selectedDates, dateStr, instance) {
+      // Manually trigger the generateTimeSlots logic since we bypassed the native 'change' event
+      const event = new Event('change');
+      document.getElementById('bookingDate').dispatchEvent(event);
+    }
+  });
 }
 
 /**

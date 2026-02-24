@@ -6,6 +6,11 @@
     <title>Beauty Studio Bony - Booking</title>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Flatpickr CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/airbnb.css">
+    <!-- Flatpickr JS -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 </head>
 <body>
     <!-- Navigation Bar -->
@@ -44,17 +49,17 @@
     <main class="container mt-4">
         <div class="row">
             <div class="col-md-8 mx-auto">
-                <div class="card">
-                    <div class="card-header bg-dark text-white">
+                <div class="card shadow-lg border-0 rounded-4">
+                    <div class="card-header bg-dark text-white rounded-top-4">
                         <h5 class="card-title mb-0">Book an Appointment</h5>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body p-5">
                         <div id="bookingMessage"></div>
                         <form id="bookingForm">
                             <!-- Service Selection -->
                             <div class="mb-3">
                                 <label for="bookingService" class="form-label">Service</label>
-                                <select class="form-select" id="bookingService" required>
+                                <select class="form-select form-select-lg" id="bookingService" required>
                                     <option value="">Select Service...</option>
                                 </select>
                             </div>
@@ -62,7 +67,7 @@
                             <!-- Specialist Selection -->
                             <div class="mb-3">
                                 <label for="bookingSpecialist" class="form-label">Specialist</label>
-                                <select class="form-select" id="bookingSpecialist" required>
+                                <select class="form-select form-select-lg" id="bookingSpecialist" required>
                                     <option value="">Select Specialist...</option>
                                 </select>
                             </div>
@@ -70,7 +75,7 @@
                             <!-- Date Selection -->
                             <div class="mb-3">
                                 <label for="bookingDate" class="form-label">Date</label>
-                                <input type="date" class="form-control" id="bookingDate" required>
+                                <input type="text" class="form-control form-control-lg bg-white" id="bookingDate" placeholder="Select a date..." readonly required>
                             </div>
 
                             <!-- Time Selection -->
@@ -81,7 +86,7 @@
                             </div>
 
                             <!-- Submit Button -->
-                            <button type="submit" class="btn btn-primary w-100">Confirm Booking</button>
+                            <button type="submit" class="btn btn-primary btn-lg w-100 rounded-pill mt-3">Confirm Booking</button>
                         </form>
                     </div>
                 </div>
