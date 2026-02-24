@@ -25,6 +25,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Setup edit booking form submission
     setupEditBookingFormSubmission();
+
+    // Setup cancel button event delegation
+    setupCancelButtonDelegation();
   } catch (error) {
     console.error('Error initializing profile page:', error);
     showMessage('Error loading profile. Please refresh the page.', 'danger');
@@ -373,6 +376,53 @@ function setupEditBookingFormSubmission() {
     } catch (error) {
       console.error('Unexpected error updating booking:', error);
       showBookingsMessage('An unexpected error occurred.', 'danger');
+    }
+  });
+}
+
+/**
+ * Setup event delegation for cancel buttons
+ * Handles clicks on dynamically generated Cancel buttons
+ */
+function setupCancelButtonDelegation() {
+  document.addEventListener('click', async (e) => {
+    const cancelBtn = e.target.closest('.cancel-btn');
+    
+    if (cancelBtn) {
+      const bookingId = cancelBtn.getAttribute('data-id');
+      
+      if (!bookingId) return;
+
+      // Ask for confirmation before permanently deleting
+      if (confirm("Are you sure you want to permanently delete this appointment? This action cannot be undone.")) {
+        const originalText = cancelBtn.innerHTML;
+        cancelBtn.innerHTML = "Deleting...";
+        cancelBtn.disabled = true;
+
+        try {
+          // Completely delete the record from the Supabase table
+          const { error } = await supabase
+            .from('bookings')
+            .delete()
+            .eq('id', bookingId);
+
+          if (error) throw error;
+
+          alert("Your appointment has been successfully deleted.");
+          
+          // Reload bookings
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session && session.user) {
+            await loadMyBookings(session.user.id);
+          }
+          
+        } catch (error) {
+          console.error("Error deleting booking:", error);
+          alert("Failed to delete: " + error.message);
+          cancelBtn.innerHTML = originalText;
+          cancelBtn.disabled = false;
+        }
+      }
     }
   });
 }
