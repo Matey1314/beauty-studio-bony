@@ -35,7 +35,7 @@ async function initializeDashboard(session) {
 
     // Get section elements
     const servicesSec = document.getElementById('adminServicesSection');
-    const usersSec = document.getElementById('manageUsersSection');
+    const usersSec = document.getElementById('adminUsersSection');
     const scheduleSec = document.getElementById('adminScheduleSection');
 
     if (userRole === 'staff') {
