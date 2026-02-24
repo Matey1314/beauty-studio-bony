@@ -48,7 +48,7 @@ async function loadServices() {
                         </div>
                         <p class="card-text text-muted flex-grow-1">${service.description || 'Professional beauty treatment.'}</p>
                         <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
-                            <small class="text-muted"><i class="bi bi-clock"></i> ${service.duration} mins</small>
+                            <small class="text-muted"><i class="bi bi-clock"></i> ${service.duration_minutes} mins</small>
                             <a href="booking.html" class="btn btn-outline-primary btn-sm rounded-pill px-3">Book Now</a>
                         </div>
                     </div>
