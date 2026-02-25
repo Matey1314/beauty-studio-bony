@@ -18,6 +18,42 @@ document.addEventListener('DOMContentLoaded', async () => {
   } catch (error) {
     console.error('Error initializing dashboard:', error);
   }
+
+  // Add listener to the form to save notes
+  const dossierForm = document.getElementById('dossierForm');
+  if (dossierForm) {
+    dossierForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('saveDossierBtn');
+      const originalText = btn.innerText;
+      btn.innerText = 'Запазване...';
+      btn.disabled = true;
+
+      const clientId = document.getElementById('dossierClientId').value;
+      const notes = document.getElementById('dossierNotes').value;
+
+      try {
+        // Upsert logic (Insert if doesn't exist, Update if it does)
+        const { error } = await supabase
+          .from('client_notes')
+          .upsert({ client_id: clientId, notes: notes }, { onConflict: 'client_id' });
+
+        if (error) throw error;
+
+        // Close modal on success
+        const modalEl = document.getElementById('dossierModal');
+        const modalInstance = bootstrap.Modal.getInstance(modalEl);
+        modalInstance.hide();
+      } catch (err) {
+        alert("Грешка при запазване на досието: " + err.message);
+        console.error(err);
+      } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+      }
+    });
+  }
+
 });
 
 /**
@@ -39,12 +75,24 @@ async function initializeDashboard(session) {
     const scheduleSec = document.getElementById('adminScheduleSection');
 
     if (userRole === 'staff') {
+      // Hide the financial dashboard for staff
+      const dashboardWrapper = document.getElementById('adminDashboardWrapper');
+      if (dashboardWrapper) {
+        dashboardWrapper.innerHTML = '';
+      }
+      
       if (servicesSec) servicesSec.style.display = 'none';
       if (usersSec) usersSec.style.display = 'none';
       if (scheduleSec) scheduleSec.style.display = 'block';
       await loadManualBookingOptions();
       await loadSchedule(session);
     } else if (userRole === 'admin') {
+      // Unhide the financial dashboard for admin users only
+      const dashboardWrapper = document.getElementById('adminDashboardWrapper');
+      if (dashboardWrapper) {
+        dashboardWrapper.classList.remove('d-none');
+      }
+      
       if (servicesSec) servicesSec.style.display = 'block';
       if (usersSec) usersSec.style.display = 'block';
       if (scheduleSec) scheduleSec.style.display = 'block';
@@ -59,6 +107,14 @@ async function initializeDashboard(session) {
       await loadGallery();
       await loadProducts();
       await loadSchedule(session);
+      
+      // Initialize the dashboard functionality for admins
+      if (typeof window.initDashboardControls === 'function') {
+        window.initDashboardControls();
+      }
+      const monthPicker = document.getElementById('dashboardMonthPicker');
+      const initialMonth = monthPicker ? monthPicker.value : null;
+      await window.loadFinancialDashboard(initialMonth);
       setupServiceFormListener();
       setupGalleryFormListener();
       setupGalleryDeleteListener();
@@ -98,6 +154,199 @@ async function getUserRole(userId) {
     return null;
   }
 }
+
+/**
+ * Initialize dashboard controls (month picker)
+ */
+window.initDashboardControls = () => {
+    const monthPicker = document.getElementById('dashboardMonthPicker');
+    if (monthPicker) {
+        // Set default to current month
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        if (!monthPicker.value) monthPicker.value = `${year}-${month}`;
+
+        // Listen for changes
+        monthPicker.addEventListener('change', (e) => {
+            window.loadFinancialDashboard(e.target.value);
+        });
+    }
+};
+
+/**
+ * Load financial dashboard with KPI cards and charts
+ */
+window.loadFinancialDashboard = async (selectedMonthStr) => {
+    try {
+        const dashboardHeader = document.getElementById('dashboardHeaderSection');
+        const dashboard = document.getElementById('financialDashboard');
+        if (!dashboardHeader || !dashboard) return;
+        
+        dashboardHeader.style.display = 'block'; // Show header
+
+        // Determine the date range based on input (YYYY-MM)
+        let year, month;
+        if (selectedMonthStr) {
+            [year, month] = selectedMonthStr.split('-');
+        } else {
+            const now = new Date();
+            year = now.getFullYear();
+            month = now.getMonth() + 1;
+        }
+
+        // 1. Bulletproof Date Math
+        const yearNum = parseInt(year);
+        const monthNum = parseInt(month);
+        const startStr = `${yearNum}-${String(monthNum).padStart(2, '0')}-01`;
+        const lastDay = new Date(yearNum, monthNum, 0).getDate();
+        const endStr = `${yearNum}-${String(monthNum).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+        const targetStart = new Date(startStr);
+        const targetEnd = new Date(endStr);
+        targetEnd.setHours(23, 59, 59, 999);
+
+        // 2. Fetch ALL necessary relational data
+        const { data: bookings, error: bError } = await supabase.from('bookings').select('*');
+        const { data: services, error: sError } = await supabase.from('services').select('*');
+        const { data: profiles, error: pError } = await supabase.from('profiles').select('id, full_name');
+
+        if (bError || sError || pError) {
+            console.error("🔥 DB FETCH ERROR:", { bError, sError, pError });
+            throw new Error("Database fetch error");
+        }
+
+        // 3. Filter using the correct `appointment_date` column
+        const completedBookings = bookings.filter(b => {
+            const isCompleted = (b.status || '').trim().toLowerCase() === 'completed';
+            if (!b.appointment_date) return false;
+            
+            const bDate = new Date(b.appointment_date); 
+            const isDateInRange = bDate >= targetStart && bDate <= targetEnd;
+            
+            return isCompleted && isDateInRange;
+        });
+
+        console.log("🔥 DASHBOARD FINAL MATCHED BOOKINGS:", completedBookings);
+
+        let totalRevenue = 0;
+        const specialistCounts = {};
+        const serviceCounts = {};
+
+        // 4. Calculate by resolving IDs
+        completedBookings.forEach(booking => {
+            // Resolve Service
+            const matchedService = services.find(s => s.id === booking.service_id);
+            const servName = matchedService && matchedService.name ? matchedService.name : 'Изтрита услуга';
+            
+            serviceCounts[servName] = (serviceCounts[servName] || 0) + 1;
+            
+            if (matchedService && matchedService.price) {
+                totalRevenue += Number(matchedService.price);
+            }
+
+            // Resolve Specialist
+            const matchedProfile = profiles.find(p => p.id === booking.employee_id);
+            const specName = matchedProfile && matchedProfile.full_name ? matchedProfile.full_name : 'Неизвестен';
+            
+            specialistCounts[specName] = (specialistCounts[specName] || 0) + 1;
+        });
+
+        // 5. Update KPI Cards
+        document.getElementById('dashRevenue').innerText = totalRevenue.toFixed(2) + ' лв.';
+        
+        const topSpecialist = Object.keys(specialistCounts).length > 0 ? Object.keys(specialistCounts).reduce((a, b) => specialistCounts[a] > specialistCounts[b] ? a : b) : '-';
+        document.getElementById('dashTopSpecialist').innerText = topSpecialist;
+
+        const topService = Object.keys(serviceCounts).length > 0 ? Object.keys(serviceCounts).reduce((a, b) => serviceCounts[a] > serviceCounts[b] ? a : b) : '-';
+        document.getElementById('dashTopService').innerText = topService;
+
+        // Render Specialist Pie Chart
+        const specCtx = document.getElementById('specialistChart');
+        if (specCtx) {
+            if (window.specChartInst) window.specChartInst.destroy();
+            window.specChartInst = new Chart(specCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(specialistCounts).length > 0 ? Object.keys(specialistCounts) : ['Нема данни'],
+                    datasets: [{
+                        data: Object.values(specialistCounts).length > 0 ? Object.values(specialistCounts) : [1],
+                        backgroundColor: ['#212529', '#0d6efd', '#ffc107', '#198754', '#dc3545'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom' } } }
+            });
+        }
+
+        // Render Services Bar Chart (Sort and get top 5)
+        const sortedServices = Object.entries(serviceCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+        const servCtx = document.getElementById('servicesChart');
+        if (servCtx) {
+            if (window.servChartInst) window.servChartInst.destroy();
+            window.servChartInst = new Chart(servCtx, {
+                type: 'bar',
+                data: {
+                    labels: sortedServices.length > 0 ? sortedServices.map(s => s[0]) : ['Нема данни'],
+                    datasets: [{
+                        label: 'Брой резервации',
+                        data: sortedServices.length > 0 ? sortedServices.map(s => s[1]) : [0],
+                        backgroundColor: '#0d6efd',
+                        borderRadius: 5
+                    }]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: true, 
+                    scales: { 
+                        y: { 
+                            beginAtZero: true, 
+                            ticks: { stepSize: 1 } 
+                        } 
+                    } 
+                }
+            });
+        }
+
+    } catch (err) {
+        console.error("Dashboard error:", err);
+    }
+};
+
+/**
+ * Open the dossier modal for a specific client
+ */
+window.openDossier = async (clientId, clientName) => {
+    if (!clientId) {
+        alert("Грешка: Липсва ID на клиента за тази резервация.");
+        return;
+    }
+    
+    document.getElementById('dossierClientId').value = clientId;
+    document.getElementById('dossierClientName').innerText = clientName;
+    const notesArea = document.getElementById('dossierNotes');
+    notesArea.value = 'Зареждане...';
+    
+    // Show the modal
+    const dossierModal = new bootstrap.Modal(document.getElementById('dossierModal'));
+    dossierModal.show();
+
+    // Fetch existing notes
+    try {
+        const { data, error } = await supabase
+            .from('client_notes')
+            .select('notes')
+            .eq('client_id', clientId)
+            .single();
+
+        if (error && error.code !== 'PGRST116') throw error; // PGRST116 is "Row not found" (which is fine for new clients)
+
+        notesArea.value = data ? data.notes : '';
+    } catch (err) {
+        console.error("Error fetching dossier:", err);
+        notesArea.value = '';
+    }
+};
 
 /**
  * Load specialists from the database and populate the specialist dropdown
@@ -377,6 +626,8 @@ async function loadSchedule(session) {
                 specialist: booking.specialist?.full_name || 'Unassigned',
                 service: booking.services?.name || 'Unknown Service',
                 user_email: booking.client?.email || 'Unknown',
+                user_id: booking.client?.id || '',
+                client_name: booking.client?.full_name || 'Клиент',
                 status: booking.status || 'pending',
                 cancelled_by: booking.cancelled_by,
                 rating: booking.rating,
@@ -407,87 +658,132 @@ async function loadSchedule(session) {
             const collapseId = `collapse-${safeId}`;
             const headingId = `heading-${safeId}`;
             
-            // Sort specialist's bookings by date/time ascending
-            specBookings.sort((a, b) => new Date(`${a.date} ${a.time}`) - new Date(`${b.date} ${b.time}`));
+            // Split bookings into active and past
+            const activeBookings = specBookings.filter(b => b.status === 'confirmed' || b.status === 'pending');
+            const pastBookings = specBookings.filter(b => b.status === 'completed' || b.status.includes('cancel'));
 
-            let tableHTML = `
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Date & Time</th>
-                                <th>Service</th>
-                                <th>Client Email</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+            // Sort active bookings ascending (closest date first)
+            activeBookings.sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+
+            // Sort past bookings descending (most recently finished first)
+            pastBookings.sort((a, b) => new Date(`${b.date}T${b.time}`) - new Date(`${a.date}T${a.time}`));
+
+            // Helper function to generate row HTML
+            const generateRowsHTML = (bookingsArray) => {
+                if (bookingsArray.length === 0) {
+                    return `<tr><td colspan="5" class="text-center text-muted py-3">Няма записи</td></tr>`;
+                }
+
+                return bookingsArray.map(booking => {
+                    // KEEP EXISTING STATUS LOGIC EXACTLY AS IS
+                    let statusBadge = '';
+                    if (booking.status === 'confirmed') statusBadge = '<span class="badge bg-success">Confirmed</span>';
+                    else if (booking.status === 'completed') statusBadge = '<span class="badge bg-secondary">Completed</span>';
+                    else if (booking.status === 'cancelled') {
+                        const canceller = booking.cancelled_by === 'client' ? '(by Client)' : '(by Salon)';
+                        statusBadge = `<span class="badge bg-danger">Cancelled ${canceller}</span>`;
+                    } else {
+                        statusBadge = `<span class="badge bg-warning text-dark">${booking.status}</span>`;
+                    }
+
+                    // KEEP EXISTING ACTION BUTTONS EXACTLY AS IS
+                    let actionButtons = '';
+                    if (booking.status === 'confirmed' || booking.status === 'pending') {
+                        actionButtons = `
+                            <button class="btn btn-sm btn-success complete-btn me-1" data-id="${booking.id}">Mark Completed</button>
+                            <button class="btn btn-sm btn-danger admin-cancel-btn me-1" data-id="${booking.id}">Cancel</button>
+                            <button class="btn btn-sm btn-outline-dark rounded-pill" onclick="openDossier('${booking.user_id}', '${booking.client_name}')">📝 Досие</button>
+                        `;
+                    } else {
+                        actionButtons = `
+                            <span class="text-muted small me-1">No actions</span>
+                            <button class="btn btn-sm btn-outline-dark rounded-pill" onclick="openDossier('${booking.user_id}', '${booking.client_name}')">📝 Досие</button>
+                        `;
+                    }
+
+                    const dateObj = new Date(`${booking.date} ${booking.time}`);
+                    const formattedDate = dateObj.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+
+                    // Build feedback HTML - only show to admins
+                    let adminFeedbackHTML = '';
+                    if (userRole === 'admin' && booking.rating) {
+                        adminFeedbackHTML = `
+                            <div class="mt-2 p-2 bg-light rounded small border-start border-warning border-3">
+                                <strong>Обратна връзка:</strong> ⭐ ${booking.rating}/5 <br>
+                                <span class="text-muted">"${booking.feedback_notes || 'Няма коментар'}"</span>
+                            </div>
+                        `;
+                    }
+
+                    return `
+                        <tr>
+                            <td class="fw-bold">${formattedDate}</td>
+                            <td>
+                                ${booking.service}
+                                ${adminFeedbackHTML}
+                            </td>
+                            <td>${booking.user_email || 'Unknown'}</td>
+                            <td>${statusBadge}</td>
+                            <td>${actionButtons}</td>
+                        </tr>
+                    `;
+                }).join('');
+            };
+
+            const accordionBodyHtml = `
+                <div class="accordion-body bg-white p-4">
+                    <h6 class="fw-bold text-success mb-3"><i class="bi bi-calendar-check"></i> Предстоящи резервации</h6>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-hover align-middle shadow-sm border rounded">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Дата & Час</th>
+                                    <th>Услуга</th>
+                                    <th>Клиент</th>
+                                    <th>Статус</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${generateRowsHTML(activeBookings)}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h6 class="fw-bold text-secondary mb-3 border-top pt-4"><i class="bi bi-archive"></i> Архив (Приключени и Отказани)</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle text-muted opacity-75">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Дата & Час</th>
+                                    <th>Услуга</th>
+                                    <th>Клиент</th>
+                                    <th>Статус</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${generateRowsHTML(pastBookings)}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             `;
-
-            specBookings.forEach(booking => {
-                // KEEP EXISTING STATUS LOGIC EXACTLY AS IS
-                let statusBadge = '';
-                if (booking.status === 'confirmed') statusBadge = '<span class="badge bg-success">Confirmed</span>';
-                else if (booking.status === 'completed') statusBadge = '<span class="badge bg-secondary">Completed</span>';
-                else if (booking.status === 'cancelled') {
-                    const canceller = booking.cancelled_by === 'client' ? '(by Client)' : '(by Salon)';
-                    statusBadge = `<span class="badge bg-danger">Cancelled ${canceller}</span>`;
-                } else {
-                    statusBadge = `<span class="badge bg-warning text-dark">${booking.status}</span>`;
-                }
-
-                // KEEP EXISTING ACTION BUTTONS EXACTLY AS IS
-                let actionButtons = '';
-                if (booking.status === 'confirmed' || booking.status === 'pending') {
-                    actionButtons = `
-                        <button class="btn btn-sm btn-success complete-btn me-1" data-id="${booking.id}">Mark Completed</button>
-                        <button class="btn btn-sm btn-danger admin-cancel-btn" data-id="${booking.id}">Cancel</button>
-                    `;
-                } else {
-                    actionButtons = '<span class="text-muted small">No actions</span>';
-                }
-
-                const dateObj = new Date(`${booking.date} ${booking.time}`);
-                const formattedDate = dateObj.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
-
-                // Build feedback HTML - only show to admins
-                let adminFeedbackHTML = '';
-                if (userRole === 'admin' && booking.rating) {
-                    adminFeedbackHTML = `
-                        <div class="mt-2 p-2 bg-light rounded small border-start border-warning border-3">
-                            <strong>Обратна връзка:</strong> ⭐ ${booking.rating}/5 <br>
-                            <span class="text-muted">"${booking.feedback_notes || 'Няма коментар'}"</span>
-                        </div>
-                    `;
-                }
-
-                tableHTML += `
-                    <tr>
-                        <td class="fw-bold">${formattedDate}</td>
-                        <td>
-                            ${booking.service}
-                            ${adminFeedbackHTML}
-                        </td>
-                        <td>${booking.user_email || 'Unknown'}</td>
-                        <td>${statusBadge}</td>
-                        <td>${actionButtons}</td>
-                    </tr>
-                `;
-            });
-
-            tableHTML += `</tbody></table></div>`;
 
             // Calculate average rating for this specialist
             const ratedBookings = specBookings.filter(b => b.rating && !isNaN(b.rating));
             let averageRatingHtml = '';
 
-            if (ratedBookings.length > 0) {
-                const sumRatings = ratedBookings.reduce((sum, curr) => sum + Number(curr.rating), 0);
-                const avgRating = (sumRatings / ratedBookings.length).toFixed(1); // e.g., 4.8
-                averageRatingHtml = `<span class="badge bg-warning text-dark ms-2 fs-6 shadow-sm">⭐ ${avgRating}/5 <small class="text-muted fw-normal">(${ratedBookings.length} мнения)</small></span>`;
-            } else {
-                averageRatingHtml = `<span class="badge bg-light text-secondary ms-2 border">Няма оценки</span>`;
+            // Check if the user is an admin before generating the badge
+            // Note: Ensure you use the correct variable for the user's role (userRole or window.userRole)
+            if (typeof userRole !== 'undefined' && userRole === 'admin') {
+                if (ratedBookings.length > 0) {
+                    const sumRatings = ratedBookings.reduce((sum, curr) => sum + Number(curr.rating), 0);
+                    const avgRating = (sumRatings / ratedBookings.length).toFixed(1); 
+                    averageRatingHtml = `<span class="badge bg-warning text-dark ms-2 fs-6 shadow-sm">⭐ ${avgRating}/5 <small class="text-muted fw-normal">(${ratedBookings.length} мнения)</small></span>`;
+                } else {
+                    averageRatingHtml = `<span class="badge bg-light text-secondary ms-2 border">Няма оценки</span>`;
+                }
             }
 
             const accordionItem = `
@@ -498,9 +794,7 @@ async function loadSchedule(session) {
                         </button>
                     </h2>
                     <div id="${collapseId}" class="accordion-collapse collapse ${isFirst ? 'show' : ''}" aria-labelledby="${headingId}" data-bs-parent="#adminScheduleAccordion">
-                        <div class="accordion-body p-0">
-                            ${tableHTML}
-                        </div>
+                        ${accordionBodyHtml}
                     </div>
                 </div>
             `;
@@ -1281,3 +1575,4 @@ function setupProductDeleteListener() {
     }
   });
 }
+

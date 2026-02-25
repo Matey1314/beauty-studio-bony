@@ -9,6 +9,8 @@
     <!-- Flatpickr CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/airbnb.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <!-- Navigation Bar -->
@@ -166,6 +168,65 @@
             </div>
         </div>
 
+        <!-- Financial Dashboard Section -->
+        <div id="adminDashboardWrapper" class="d-none">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 bg-white p-3 rounded-4 shadow-sm border" style="display: none;" id="dashboardHeaderSection">
+                <button class="btn btn-dark fw-bold rounded-pill px-4" type="button" data-bs-toggle="collapse" data-bs-target="#dashboardCollapse" aria-expanded="false" aria-controls="dashboardCollapse">
+                    📊 Покажи / Скрий Статистиката
+                </button>
+                <div class="d-flex align-items-center mt-3 mt-md-0">
+                    <label class="me-2 text-muted small fw-bold mb-0">Избери месец:</label>
+                    <input type="month" id="dashboardMonthPicker" class="form-control rounded-pill bg-light border-0 shadow-sm w-auto">
+                </div>
+            </div>
+
+            <div class="collapse mb-5" id="dashboardCollapse">
+                <div class="row g-4" id="financialDashboard">
+                    <div class="col-12">
+                        <h4 class="fw-bold mb-3"><i class="bi bi-graph-up-arrow text-primary"></i> Статистика за месеца</h4>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm rounded-4 h-100 bg-dark text-white">
+                            <div class="card-body p-4 text-center">
+                                <h6 class="text-uppercase text-muted mb-2">Очакван Приход</h6>
+                                <h2 class="fw-bold mb-0" id="dashRevenue">0 лв.</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm rounded-4 h-100 bg-primary text-white">
+                            <div class="card-body p-4 text-center">
+                                <h6 class="text-uppercase text-white-50 mb-2">Топ Специалист</h6>
+                                <h2 class="fw-bold mb-0" id="dashTopSpecialist">-</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm rounded-4 h-100 bg-light">
+                            <div class="card-body p-4 text-center">
+                                <h6 class="text-uppercase text-muted mb-2">Топ Услуга</h6>
+                                <h2 class="fw-bold text-dark mb-0" id="dashTopService">-</h2>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mt-4">
+                        <div class="card border-0 shadow-sm rounded-4 p-3 h-100">
+                            <h6 class="fw-bold text-center mb-3">Резервации по специалисти</h6>
+                            <canvas id="specialistChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mt-4">
+                        <div class="card border-0 shadow-sm rounded-4 p-3 h-100">
+                            <h6 class="fw-bold text-center mb-3">Топ 5 Услуги</h6>
+                            <canvas id="servicesChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- My Schedule / Bookings Section (Admin and Staff) -->
         <div id="adminScheduleSection" class="card shadow-lg border-0 rounded-4 overflow-hidden mb-5" style="display: none;">
             <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
@@ -245,6 +306,28 @@
                             <input type="text" id="staffServices" class="form-control form-control-lg bg-light" placeholder="E.g. Гел лак, Педикюр (comma separated)">
                         </div>
                         <button type="submit" class="btn btn-primary btn-lg rounded-pill w-100">Save Details</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dossier Modal -->
+    <div class="modal fade" id="dossierModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header bg-dark text-white border-bottom-0 rounded-top-4">
+                    <h5 class="modal-title fw-bold">📝 Досие: <span id="dossierClientName" class="text-warning"></span></h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body bg-light">
+                    <form id="dossierForm">
+                        <input type="hidden" id="dossierClientId">
+                        <div class="mb-3">
+                            <label class="form-label text-muted small fw-bold">Тайни записки за клиента (Алергии, предпочитания, формули)</label>
+                            <textarea id="dossierNotes" class="form-control rounded-3 shadow-sm border-0" rows="6" placeholder="Напр. Алергична към гел Х, обича кафе с мляко..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-warning w-100 rounded-pill py-2 fw-bold shadow-sm" id="saveDossierBtn">Запази досието</button>
                     </form>
                 </div>
             </div>
