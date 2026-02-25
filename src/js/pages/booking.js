@@ -341,7 +341,7 @@ async function submitBooking() {
       service_id: serviceVal,
       employee_id: specialistVal,
       appointment_date: appointmentDate,
-      status: 'pending'
+      status: 'confirmed'
     };
 
     // Insert booking into database
