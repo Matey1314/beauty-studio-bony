@@ -47,8 +47,13 @@ async function handleRegister(e) {
             return;
         }
 
-        displayMessage('Registration successful! Please check your email to confirm your account.', 'success');
+        displayMessage('Registration successful! Redirecting to your profile...', 'success');
         registerForm.reset();
+        
+        // Redirect to profile page with new=true parameter after successful registration
+        setTimeout(() => {
+            window.location.href = 'profile.html?new=true';
+        }, 1000);
     } catch (error) {
         displayMessage(`An unexpected error occurred: ${error.message}`, 'danger');
     }

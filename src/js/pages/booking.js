@@ -312,6 +312,17 @@ async function submitBooking() {
       return;
     }
 
+    // Check if user has a phone number in auth metadata - required for booking
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user || !user.user_metadata || !user.user_metadata.phone || user.user_metadata.phone.trim() === '') {
+      showBookingMessage('Please complete your profile with a phone number before booking.', 'warning');
+      setTimeout(() => {
+        window.location.href = 'profile.html';
+      }, 2000);
+      return;
+    }
+
     // Get form values
     const serviceVal = document.getElementById('bookingService').value;
     const specialistVal = document.getElementById('bookingSpecialist').value;
@@ -330,6 +341,10 @@ async function submitBooking() {
       submitButton.disabled = true;
       submitButton.textContent = 'Confirming...';
     }
+
+    // Extract phone and name from user metadata for reference
+    const phone = user.user_metadata.phone;
+    const fullName = user.user_metadata.full_name;
 
     // Combine date and time into a valid PostgreSQL timestamp
     const appointmentDateTime = `${dateVal}T${timeVal}:00`;

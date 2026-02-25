@@ -335,10 +335,18 @@ async function loadSchedule(session) {
         const { data: profile } = await supabase.from('profiles').select('role').eq('id', currentSession.user.id).single();
         const userRole = profile?.role;
 
-        // Build query (Trying standard foreign key for the client)
+        // Build query with specialist and service joins
         let query = supabase
             .from('bookings')
-            .select('id, appointment_date, status, cancelled_by, services(name), client:profiles!bookings_client_id_fkey(full_name, phone)')
+            .select(`
+                id, 
+                appointment_date, 
+                status, 
+                cancelled_by, 
+                services!bookings_service_id_fkey(name),
+                specialist:profiles!bookings_employee_id_fkey(full_name),
+                client:client_id(*)
+            `)
             .order('appointment_date', { ascending: true });
 
         // Filter for staff
@@ -354,60 +362,122 @@ async function loadSchedule(session) {
             return;
         }
 
-        const tbody = document.getElementById('scheduleTableBody');
-        if (!tbody) {
-            console.error('CRITICAL: scheduleTableBody element is missing in admin.html!');
-            return;
-        }
-
-        // Clear existing rows
-        tbody.innerHTML = '';
-
-        if (!schedule || schedule.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center">No appointments found.</td></tr>';
-            return;
-        }
-
-        // Render rows safely
-        schedule.forEach(booking => {
+        // Transform schedule data to match expected format
+        const bookings = (schedule || []).map(booking => {
             const dateObj = new Date(booking.appointment_date);
-            const formattedDate = isNaN(dateObj) ? 'Invalid Date' : dateObj.toLocaleString();
-            
-            // Safely extract names in case the join alias differs
-            const clientName = booking.client?.full_name || booking.profiles?.full_name || 'N/A';
-            const clientPhone = booking.client?.phone || booking.profiles?.phone || 'N/A';
-            const serviceName = booking.services?.name || 'N/A';
-            const status = booking.status || 'pending';
+            const dateStr = dateObj.toISOString().split('T')[0]; // YYYY-MM-DD
+            const timeStr = dateObj.toTimeString().slice(0, 5); // HH:MM
 
-            // Generate status badge with cancellation info
-            let statusBadge = '';
-            if (booking.status === 'confirmed') {
-                statusBadge = '<span class="badge bg-success">Confirmed</span>';
-            } else if (booking.status === 'completed') {
-                statusBadge = '<span class="badge bg-secondary">Completed</span>';
-            } else if (booking.status === 'cancelled') {
-                const canceller = booking.cancelled_by === 'client' ? '(by Client)' : '(by Salon)';
-                statusBadge = `<span class="badge bg-danger">Cancelled ${canceller}</span>`;
-            } else {
-                statusBadge = `<span class="badge bg-warning text-dark">${booking.status}</span>`;
-            }
-
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${formattedDate}</td>
-                <td>${clientName}</td>
-                <td>${clientPhone}</td>
-                <td>${serviceName}</td>
-                <td>
-                    ${statusBadge}
-                </td>
-                <td>
-                    <button class="btn btn-sm btn-success complete-btn" data-id="${booking.id}">Complete</button>
-                    <button class="btn btn-sm btn-danger admin-cancel-btn" data-id="${booking.id}">Cancel</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
+            return {
+                id: booking.id,
+                date: dateStr,
+                time: timeStr,
+                specialist: booking.specialist?.full_name || 'Unassigned',
+                service: booking.services?.name || 'Unknown Service',
+                user_email: booking.client?.email || 'Unknown',
+                status: booking.status || 'pending',
+                cancelled_by: booking.cancelled_by
+            };
         });
+
+        // Group bookings by specialist
+        const groupedBookings = bookings.reduce((acc, booking) => {
+            const specName = booking.specialist || 'Unassigned';
+            if (!acc[specName]) acc[specName] = [];
+            acc[specName].push(booking);
+            return acc;
+        }, {});
+
+        const accordionContainer = document.getElementById('adminScheduleAccordion');
+        accordionContainer.innerHTML = '';
+
+        if (Object.keys(groupedBookings).length === 0) {
+            accordionContainer.innerHTML = '<div class="p-4 text-center text-muted">No bookings found.</div>';
+            return;
+        }
+
+        let isFirst = true;
+
+        for (const [specialist, specBookings] of Object.entries(groupedBookings)) {
+            const safeId = specialist.replace(/[^a-zA-Z0-9]/g, '') || 'unassigned';
+            const collapseId = `collapse-${safeId}`;
+            const headingId = `heading-${safeId}`;
+            
+            // Sort specialist's bookings by date/time ascending
+            specBookings.sort((a, b) => new Date(`${a.date} ${a.time}`) - new Date(`${b.date} ${b.time}`));
+
+            let tableHTML = `
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date & Time</th>
+                                <th>Service</th>
+                                <th>Client Email</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            specBookings.forEach(booking => {
+                // KEEP EXISTING STATUS LOGIC EXACTLY AS IS
+                let statusBadge = '';
+                if (booking.status === 'confirmed') statusBadge = '<span class="badge bg-success">Confirmed</span>';
+                else if (booking.status === 'completed') statusBadge = '<span class="badge bg-secondary">Completed</span>';
+                else if (booking.status === 'cancelled') {
+                    const canceller = booking.cancelled_by === 'client' ? '(by Client)' : '(by Salon)';
+                    statusBadge = `<span class="badge bg-danger">Cancelled ${canceller}</span>`;
+                } else {
+                    statusBadge = `<span class="badge bg-warning text-dark">${booking.status}</span>`;
+                }
+
+                // KEEP EXISTING ACTION BUTTONS EXACTLY AS IS
+                let actionButtons = '';
+                if (booking.status === 'confirmed' || booking.status === 'pending') {
+                    actionButtons = `
+                        <button class="btn btn-sm btn-success complete-btn me-1" data-id="${booking.id}">Mark Completed</button>
+                        <button class="btn btn-sm btn-danger admin-cancel-btn" data-id="${booking.id}">Cancel</button>
+                    `;
+                } else {
+                    actionButtons = '<span class="text-muted small">No actions</span>';
+                }
+
+                const dateObj = new Date(`${booking.date} ${booking.time}`);
+                const formattedDate = dateObj.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+
+                tableHTML += `
+                    <tr>
+                        <td class="fw-bold">${formattedDate}</td>
+                        <td>${booking.service}</td>
+                        <td>${booking.user_email || 'Unknown'}</td>
+                        <td>${statusBadge}</td>
+                        <td>${actionButtons}</td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += `</tbody></table></div>`;
+
+            const accordionItem = `
+                <div class="accordion-item border-0 border-bottom">
+                    <h2 class="accordion-header" id="${headingId}">
+                        <button class="accordion-button ${isFirst ? '' : 'collapsed'} fw-bold fs-5 bg-light text-dark" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="${isFirst ? 'true' : 'false'}" aria-controls="${collapseId}">
+                            💇‍♀️ ${specialist} <span class="badge bg-primary ms-3 rounded-pill">${specBookings.length} bookings</span>
+                        </button>
+                    </h2>
+                    <div id="${collapseId}" class="accordion-collapse collapse ${isFirst ? 'show' : ''}" aria-labelledby="${headingId}" data-bs-parent="#adminScheduleAccordion">
+                        <div class="accordion-body p-0">
+                            ${tableHTML}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            accordionContainer.innerHTML += accordionItem;
+            isFirst = false; // Only the first accordion stays open by default
+        }
 
         // Attach event listeners for Complete button
         document.addEventListener('click', async (e) => {

@@ -1,6 +1,36 @@
 import { supabase } from '../services/supabaseClient.js';
 
 /**
+ * Load profile information from Supabase Auth metadata
+ */
+const loadProfileInfo = async () => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user && user.user_metadata) {
+      if (document.getElementById('profileName')) {
+        document.getElementById('profileName').value = user.user_metadata.full_name || '';
+      }
+      if (document.getElementById('profilePhone')) {
+        document.getElementById('profilePhone').value = user.user_metadata.phone || '';
+      }
+    }
+
+    // Check if newly registered and show welcome alert
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('new') === 'true') {
+      const profileAlert = document.getElementById('profileAlert');
+      if (profileAlert) {
+        profileAlert.classList.remove('d-none');
+      }
+      // Remove the query parameter from URL for cleaner navigation
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  } catch (error) {
+    console.error('Error loading profile info:', error);
+  }
+};
+
+/**
  * Initialize profile page
  * Check for active session and load user data
  */
@@ -15,9 +45,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    // Load user profile data
-    await loadUserProfile(session.user.id);
-    setupFormSubmission(session.user.id);
+    // Load user profile information from auth metadata
+    await loadProfileInfo();
+    setupFormSubmission();
 
     // Load bookings
     await loadMyBookings(session.user.id);
@@ -30,46 +60,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
-/**
- * Load user profile data from the profiles table
- * @param {string} userId - The user's ID
- */
-async function loadUserProfile(userId) {
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('full_name, phone')
-      .eq('id', userId)
-      .single();
 
-    if (error) {
-      console.error('Error fetching profile:', error);
-      showMessage('Error loading profile data.', 'danger');
-      return;
-    }
-
-    // Populate form fields with user data
-    if (data) {
-      document.getElementById('profileName').value = data.full_name || '';
-      document.getElementById('profilePhone').value = data.phone || '';
-    }
-  } catch (error) {
-    console.error('Unexpected error loading profile:', error);
-    showMessage('An unexpected error occurred.', 'danger');
-  }
-}
 
 /**
  * Setup form submission handling
- * @param {string} userId - The user's ID
  */
-function setupFormSubmission(userId) {
-  const form = document.getElementById('profileForm');
+function setupFormSubmission() {
+  const form = document.getElementById('profileInfoForm');
   
   if (!form) return;
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+
+    const saveBtn = document.getElementById('saveProfileBtn');
+    saveBtn.innerHTML = 'Saving...';
+    saveBtn.disabled = true;
 
     const fullName = document.getElementById('profileName').value.trim();
     const phone = document.getElementById('profilePhone').value.trim();
@@ -77,29 +83,34 @@ function setupFormSubmission(userId) {
     // Basic validation
     if (!fullName || !phone) {
       showMessage('Please fill in all fields.', 'warning');
+      saveBtn.innerHTML = 'Save Details';
+      saveBtn.disabled = false;
       return;
     }
 
     try {
-      // Update profile in the database
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          full_name: fullName,
-          phone: phone
-        })
-        .eq('id', userId);
+      // Update user metadata in Supabase Auth
+      const { error } = await supabase.auth.updateUser({
+        data: { full_name: fullName, phone: phone }
+      });
 
       if (error) {
-        console.error('Error updating profile:', error);
-        showMessage('Error updating profile. Please try again.', 'danger');
-        return;
+        throw error;
+      }
+
+      // Hide the new registration alert if visible
+      const profileAlert = document.getElementById('profileAlert');
+      if (profileAlert) {
+        profileAlert.classList.add('d-none');
       }
 
       showMessage('Profile updated successfully!', 'success');
     } catch (error) {
       console.error('Unexpected error updating profile:', error);
-      showMessage('An unexpected error occurred.', 'danger');
+      showMessage('Error updating profile: ' + error.message, 'danger');
+    } finally {
+      saveBtn.innerHTML = 'Save Details';
+      saveBtn.disabled = false;
     }
   });
 }
