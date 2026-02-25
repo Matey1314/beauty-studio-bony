@@ -49,14 +49,14 @@
             <a href="booking.html" class="btn btn-primary btn-lg rounded-pill px-5 py-3 fs-5 fw-bold shadow">Book Your Visit</a>
         </div>
 
-        <!-- Services Section Header -->
-        <div class="text-center mb-4">
-            <h2 class="fw-bold">Our Services & Prices</h2>
-            <p class="text-muted">Choose from our wide range of professional treatments.</p>
-        </div>
-        
-        <!-- Services List -->
-        <div class="row g-4" id="servicesList">
+        <!-- Services & Prices Trigger Banner -->
+        <div class="text-center mb-5 bg-white p-5 rounded-4 shadow-sm border-0" style="transition: transform 0.3s ease, box-shadow 0.3s ease;" onmouseover="this.style.transform='translateY(-5px)'; this.classList.replace('shadow-sm', 'shadow-lg');" onmouseout="this.style.transform='translateY(0)'; this.classList.replace('shadow-lg', 'shadow-sm');">
+            <div class="display-4 mb-3" style="color: #0d6efd;"><i class="bi bi-tags"></i></div>
+            <h2 class="fw-bold text-dark">Our Services & Prices</h2>
+            <p class="text-muted mb-4">Explore our wide range of professional beauty treatments.</p>
+            <button class="btn btn-dark btn-lg rounded-pill px-5 shadow" data-bs-toggle="modal" data-bs-target="#servicesModal">
+                View Price List
+            </button>
         </div>
 
         <!-- Features Section -->
@@ -78,10 +78,19 @@
             </div>
             
             <div class="col-md-4 mb-4">
-                <div class="p-4 bg-white rounded-4 shadow-sm h-100" style="transition: transform 0.3s ease, box-shadow 0.3s ease;" onmouseover="this.style.transform='translateY(-5px)'; this.classList.replace('shadow-sm', 'shadow-lg');" onmouseout="this.style.transform='translateY(0)'; this.classList.replace('shadow-lg', 'shadow-sm');">
-                    <div class="display-4 mb-3">📅</div>
-                    <h4 class="fw-bold text-dark">Easy Online Booking</h4>
-                    <p class="text-muted">Schedule your appointments 24/7 with our seamless booking system.</p>
+                <div class="p-4 bg-white rounded-4 shadow-sm h-100 d-flex flex-column justify-content-center align-items-center" style="transition: transform 0.3s ease, box-shadow 0.3s ease; cursor: pointer;" onmouseover="this.style.transform='translateY(-5px)'; this.classList.replace('shadow-sm', 'shadow-lg');" onmouseout="this.style.transform='translateY(0)'; this.classList.replace('shadow-lg', 'shadow-sm');" onclick="window.open('https://share.google/Xh1KPZF5EAFeZ8g5m', '_blank')">
+                    <div class="mb-3">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google Logo" style="width: 45px; height: 45px;">
+                    </div>
+                    <div class="text-warning mb-2 fs-5">
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                    </div>
+                    <h4 class="fw-bold text-dark">5.0 Отлична оценка</h4>
+                    <p class="text-muted small mb-0">Вижте отзивите на нашите клиенти</p>
                 </div>
             </div>
         </div>
@@ -97,6 +106,22 @@
                 </div>
                 <div class="modal-body p-5 bg-light">
                     <div class="row g-4" id="teamMembersContainer">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Services Modal -->
+    <div class="modal fade" id="servicesModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+            <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden">
+                <div class="modal-header bg-dark text-white border-0 p-4">
+                    <h3 class="modal-title fw-bold mb-0">Price List</h3>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 p-md-5 bg-light">
+                    <div class="row g-4" id="servicesModalList">
                     </div>
                 </div>
             </div>

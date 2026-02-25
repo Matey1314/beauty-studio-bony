@@ -6,16 +6,20 @@ import { supabase } from '../services/supabaseClient.js';
  */
 document.addEventListener('DOMContentLoaded', async () => {
     try {
-        await loadServices();
-        
         // Load team members when team modal is shown
         const teamModal = document.getElementById('teamModal');
         if (teamModal) {
             teamModal.addEventListener('show.bs.modal', loadTeamMembers);
         }
+        
+        // Load services when services modal is shown
+        const servicesModal = document.getElementById('servicesModal');
+        if (servicesModal) {
+            servicesModal.addEventListener('show.bs.modal', loadServices);
+        }
     } catch (error) {
         console.error('Error initializing home page:', error);
-        showMessage('Error loading services. Please refresh the page.', 'danger');
+        showMessage('Error loading data. Please refresh the page.', 'danger');
     }
 });
 
@@ -31,15 +35,15 @@ async function loadServices() {
 
         if (error) throw error;
 
-        const servicesList = document.getElementById('servicesList');
+        const servicesContainer = document.getElementById('servicesModalList');
         
         if (!services || services.length === 0) {
-            servicesList.innerHTML = '<p class="text-center text-muted">No services available at the moment.</p>';
+            servicesContainer.innerHTML = '<p class="text-center text-muted">No services available at the moment.</p>';
             return;
         }
 
         // Clear existing content
-        servicesList.innerHTML = '';
+        servicesContainer.innerHTML = '';
 
         // Render each service as a premium card
         services.forEach(service => {
@@ -60,7 +64,7 @@ async function loadServices() {
                     </div>
                 </div>
             `;
-            servicesList.appendChild(col);
+            servicesContainer.appendChild(col);
         });
     } catch (error) {
         console.error('Error loading services:', error);

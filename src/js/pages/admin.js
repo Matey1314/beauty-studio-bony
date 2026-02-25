@@ -48,12 +48,17 @@ async function initializeDashboard(session) {
       if (servicesSec) servicesSec.style.display = 'block';
       if (usersSec) usersSec.style.display = 'block';
       if (scheduleSec) scheduleSec.style.display = 'block';
+      const gallerySec = document.getElementById('adminGallerySection');
+      if (gallerySec) gallerySec.style.display = 'block';
       await loadManualBookingOptions();
       await loadSpecialists();
       await loadServices();
       await loadUsers();
+      await loadGallery();
       await loadSchedule(session);
       setupServiceFormListener();
+      setupGalleryFormListener();
+      setupGalleryDeleteListener();
     } else {
       // Client or other role: Should not be here
       console.warn('User role does not have dashboard access');
@@ -767,4 +772,171 @@ function setupEditStaffFormListener() {
       }
     });
   }
+}
+/**
+ * Load gallery images from the database and render them
+ */
+async function loadGallery() {
+  try {
+    const { data, error } = await supabase
+      .from('gallery')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching gallery:', error);
+      return;
+    }
+
+    const galleryListContainer = document.getElementById('adminGalleryList');
+    if (!galleryListContainer) return;
+
+    galleryListContainer.innerHTML = '';
+
+    data.forEach(item => {
+      const col = document.createElement('div');
+      col.className = 'col-md-6 col-lg-4';
+      col.innerHTML = `
+        <div class="card shadow-sm border-0 position-relative">
+          <img src="${item.image_url}" alt="${item.title || 'Gallery Image'}" class="card-img-top" style="height: 250px; object-fit: cover;">
+          <div class="card-body">
+            <p class="card-text text-muted small">${item.title || 'Untitled'}</p>
+          </div>
+          <button class="btn btn-sm btn-danger delete-gallery-btn position-absolute top-0 end-0 m-2" data-id="${item.id}" data-url="${item.image_url}">Delete</button>
+        </div>
+      `;
+      galleryListContainer.appendChild(col);
+    });
+  } catch (error) {
+    console.error('Unexpected error loading gallery:', error);
+  }
+}
+
+/**
+ * Setup event listener for the gallery upload form (Bulletproof version)
+ */
+function setupGalleryFormListener() {
+  const galleryFileInput = document.getElementById('galleryImageFile');
+  // Find the parent form, or fallback to the nearest button if not in a form
+  const galleryUploadForm = galleryFileInput ? galleryFileInput.closest('form') : null;
+  const galleryUploadBtn = galleryUploadForm ? galleryUploadForm.querySelector('button[type="submit"]') : (galleryFileInput ? galleryFileInput.parentElement.querySelector('button') : null);
+
+  const handleGalleryUpload = async (e) => {
+    if (e) e.preventDefault(); // CRITICAL: Prevent page reload!
+
+    if (!galleryFileInput || !galleryFileInput.files[0]) {
+      alert('Please select an image to upload.');
+      return;
+    }
+
+    const file = galleryFileInput.files[0];
+    const titleInput = document.getElementById('galleryImageTitle');
+    const title = titleInput ? titleInput.value : '';
+
+    const originalBtnText = galleryUploadBtn.innerHTML;
+    galleryUploadBtn.innerHTML = 'Uploading... Please wait';
+    galleryUploadBtn.disabled = true;
+
+    try {
+      // 1. Upload to Supabase Storage ('gallery' bucket)
+      const fileExt = file.name.split('.').pop();
+      const fileName = `gallery-${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('gallery')
+        .upload(fileName, file, { cacheControl: '3600', upsert: false });
+
+      if (uploadError) throw new Error("Storage Upload failed: " + uploadError.message);
+
+      // 2. Get the Public URL
+      const { data: urlData } = supabase.storage.from('gallery').getPublicUrl(fileName);
+      const imageUrl = urlData.publicUrl;
+
+      // 3. Save to 'gallery' Database Table
+      const { error: dbError } = await supabase
+        .from('gallery')
+        .insert([{ image_url: imageUrl, title: title }]);
+
+      if (dbError) throw new Error("Database insert failed: " + dbError.message);
+
+      alert('Image added to gallery successfully!');
+
+      // Reset input fields
+      galleryFileInput.value = '';
+      if (titleInput) titleInput.value = '';
+
+      // Refresh the admin gallery view
+      if (typeof loadGallery === 'function') {
+        await loadGallery();
+      }
+
+    } catch (error) {
+      console.error('Gallery upload error:', error);
+      alert(error.message);
+    } finally {
+      galleryUploadBtn.innerHTML = originalBtnText;
+      galleryUploadBtn.disabled = false;
+    }
+  };
+
+  // Safely attach the event listener depending on HTML structure
+  if (galleryUploadForm) {
+    galleryUploadForm.onsubmit = handleGalleryUpload;
+  } else if (galleryUploadBtn) {
+    galleryUploadBtn.onclick = handleGalleryUpload;
+  }
+}
+
+/**
+ * Setup event delegation for deleting gallery images
+ */
+function setupGalleryDeleteListener() {
+  const galleryListContainer = document.getElementById('adminGalleryList');
+  if (!galleryListContainer) return;
+
+  galleryListContainer.addEventListener('click', async (e) => {
+    const deleteBtn = e.target.closest('.delete-gallery-btn');
+    if (!deleteBtn) return;
+
+    const id = deleteBtn.dataset.id;
+    const imageUrl = deleteBtn.dataset.url;
+
+    if (!confirm('Are you sure you want to delete this image?')) {
+      return;
+    }
+
+    try {
+      // Extract filename from URL
+      const urlParts = imageUrl.split('/');
+      const fileName = urlParts[urlParts.length - 1];
+
+      // Delete from storage
+      const { error: storageError } = await supabase.storage
+        .from('gallery')
+        .remove([fileName]);
+
+      if (storageError) {
+        console.error('Storage delete error:', storageError);
+        // Continue with database deletion even if storage delete fails
+      }
+
+      // Delete from database
+      const { error: dbError } = await supabase
+        .from('gallery')
+        .delete()
+        .eq('id', id);
+
+      if (dbError) {
+        console.error('Database delete error:', dbError);
+        alert('Failed to delete gallery record');
+        return;
+      }
+
+      alert('Image deleted successfully!');
+      await loadGallery();
+    } catch (error) {
+      console.error('Error deleting image:', error);
+      alert('Error: ' + error.message);
+    }
+  });
 }
