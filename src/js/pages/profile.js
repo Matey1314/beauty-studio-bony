@@ -144,7 +144,7 @@ function showMessage(message, type) {
 
 
 /**
- * Load user's bookings and display in table
+ * Load user's bookings and display in separate sections (upcoming and history)
  * @param {string} userId - The user's ID
  */
 async function loadMyBookings(userId) {
@@ -155,53 +155,93 @@ async function loadMyBookings(userId) {
       .eq('client_id', userId)
       .order('appointment_date', { ascending: true });
 
-    // Log bookings structure to verify specialist field
-    console.log('Bookings data:', bookings);
-
     if (error) {
       console.error('Error fetching bookings:', error);
-      showBookingsMessage('Error loading bookings.', 'danger');
       return;
     }
-
-    const tableBody = document.getElementById('bookingsTableBody');
-    if (!tableBody) return;
-
-    tableBody.innerHTML = '';
 
     if (!bookings || bookings.length === 0) {
-      tableBody.innerHTML = '<tr><td colspan="5" class="text-center">No bookings found.</td></tr>';
+      document.getElementById('upcomingBookingsContainer').innerHTML = '<p class="text-muted mb-0">No upcoming appointments.</p>';
+      document.getElementById('historyBookingsContainer').innerHTML = '<p class="text-muted mb-0">No booking history.</p>';
       return;
     }
 
-    bookings.forEach(booking => {
-      const row = document.createElement('tr');
-      const appointmentDate = new Date(booking.appointment_date);
-      const formattedDate = appointmentDate.toLocaleString();
-      const specialistName = booking.specialist?.full_name || 'N/A';
-      const isEditable = booking.status !== 'cancelled' && booking.status !== 'completed';
-      const statusDisplay = booking.status.charAt(0).toUpperCase() + booking.status.slice(1);
+    // Filter bookings into upcoming (confirmed/pending) and history (completed/cancelled)
+    const upcomingBookings = bookings.filter(b => 
+      b.status === 'confirmed' || b.status === 'pending'
+    );
 
-      let buttonsHTML = '';
-      if (isEditable) {
-        buttonsHTML = `
-          <button class="btn btn-sm btn-danger cancel-btn" data-id="${booking.id}">Cancel</button>
-        `;
-      }
+    const historyBookings = bookings.filter(b => 
+      b.status === 'completed' || b.status === 'cancelled'
+    );
 
-      row.innerHTML = `
+    // Sort history by date descending (most recent first)
+    historyBookings.sort((a, b) => 
+      new Date(b.appointment_date) - new Date(a.appointment_date)
+    );
+
+    // Render both sections
+    renderBookingsTable('upcomingBookingsContainer', upcomingBookings);
+    renderBookingsTable('historyBookingsContainer', historyBookings);
+
+  } catch (error) {
+    console.error('Unexpected error loading bookings:', error);
+  }
+}
+
+/**
+ * Render bookings into a table in the specified container
+ * @param {string} containerId - The ID of the container to render into
+ * @param {Array} bookings - The array of bookings to render
+ */
+function renderBookingsTable(containerId, bookings) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  if (!bookings || bookings.length === 0) {
+    const emptyMessage = containerId === 'upcomingBookingsContainer' 
+      ? 'No upcoming appointments.' 
+      : 'No booking history.';
+    container.innerHTML = `<p class="text-muted mb-0">${emptyMessage}</p>`;
+    return;
+  }
+
+  let html = `<table class="table table-striped table-hover align-middle mb-0">
+    <thead>
+      <tr>
+        <th>Service</th>
+        <th>Specialist</th>
+        <th>Date & Time</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>`;
+
+  bookings.forEach(booking => {
+    const appointmentDate = new Date(booking.appointment_date);
+    const formattedDate = appointmentDate.toLocaleString();
+    const specialistName = booking.specialist?.full_name || 'N/A';
+    const isEditable = booking.status !== 'cancelled' && booking.status !== 'completed';
+    const statusDisplay = booking.status.charAt(0).toUpperCase() + booking.status.slice(1);
+
+    let buttonsHTML = '';
+    if (isEditable) {
+      buttonsHTML = `<button class="btn btn-sm btn-danger cancel-btn" data-id="${booking.id}">Cancel</button>`;
+    }
+
+    html += `
+      <tr>
         <td>${booking.services.name}</td>
         <td>${specialistName}</td>
         <td>${formattedDate}</td>
         <td><span class="badge bg-${getStatusBadgeClass(booking.status)}">${statusDisplay}</span></td>
         <td>${buttonsHTML}</td>
-      `;
-      tableBody.appendChild(row);
-    });
-  } catch (error) {
-    console.error('Unexpected error loading bookings:', error);
-    showBookingsMessage('An unexpected error occurred.', 'danger');
-  }
+      </tr>`;
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
 }
 
 /**

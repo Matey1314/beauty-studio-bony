@@ -55,39 +55,38 @@
                     </div>
                     <div class="card-body p-5">
                         <div id="bookingMessage"></div>
-                        <form id="bookingForm">
-                            <!-- Service Selection -->
-                            <div class="mb-3">
-                                <label for="bookingService" class="form-label">Service</label>
-                                <select class="form-select form-select-lg" id="bookingService" required>
-                                    <option value="">Select Service...</option>
-                                </select>
+                        <div id="bookingWizard" class="card border-0 shadow-sm rounded-4 p-4 p-md-5">
+                            <div id="step1" class="wizard-step">
+                                <h4 class="fw-bold mb-4 text-center">1. Избери специалист</h4>
+                                <div class="row g-4 justify-content-center" id="wizardSpecialistsList">
+                                    <div class="text-center text-muted">Зареждане на екипа...</div>
+                                </div>
                             </div>
 
-                            <!-- Specialist Selection -->
-                            <div class="mb-3">
-                                <label for="bookingSpecialist" class="form-label">Specialist</label>
-                                <select class="form-select form-select-lg" id="bookingSpecialist" required>
-                                    <option value="">Select Specialist...</option>
-                                </select>
+                            <div id="step2" class="wizard-step d-none">
+                                <button type="button" class="btn btn-sm btn-light mb-4 rounded-pill px-3" onclick="goToStep(1)"><i class="bi bi-arrow-left"></i> Назад</button>
+                                <h4 class="fw-bold mb-4 text-center">2. Избери услуга</h4>
+                                <div class="row g-3 justify-content-center" id="wizardServicesList"></div>
                             </div>
 
-                            <!-- Date Selection -->
-                            <div class="mb-3">
-                                <label for="bookingDate" class="form-label">Date</label>
-                                <input type="text" class="form-control form-control-lg bg-white" id="bookingDate" placeholder="Select a date..." readonly required>
+                            <div id="step3" class="wizard-step d-none">
+                                <button type="button" class="btn btn-sm btn-light mb-4 rounded-pill px-3" onclick="goToStep(2)"><i class="bi bi-arrow-left"></i> Назад</button>
+                                <h4 class="fw-bold mb-4 text-center">3. Кога да те очакваме?</h4>
+                                <div class="row g-4 justify-content-center">
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted small">Дата</label>
+                                        <input type="date" class="form-control form-control-lg rounded-4 bg-light border-0" id="wizardDate">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted small">Час</label>
+                                        <input type="time" class="form-control form-control-lg rounded-4 bg-light border-0" id="wizardTime">
+                                    </div>
+                                    <div class="col-12 text-center mt-5">
+                                        <button type="button" class="btn btn-dark btn-lg rounded-pill px-5 py-3 shadow" id="wizardSubmitBtn">Потвърди резервацията</button>
+                                    </div>
+                                </div>
                             </div>
-
-                            <!-- Time Selection -->
-                            <label class="form-label fw-bold mt-3">Select Time</label>
-                            <input type="hidden" id="bookingTime" required>
-                            <div id="timeSlotsContainer" class="d-flex flex-wrap gap-2 mb-3 p-3 bg-light border rounded">
-                              <p class="text-muted small w-100 text-center mb-0">Please select a Service, Specialist, and Date first to see available times.</p>
-                            </div>
-
-                            <!-- Submit Button -->
-                            <button type="submit" class="btn btn-primary btn-lg w-100 rounded-pill mt-3">Confirm Booking</button>
-                        </form>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -739,7 +739,7 @@ async function loadUsers() {
 
       let actionsHtml = `<button class="btn btn-sm btn-success rounded-pill save-role-btn" data-user-id="${user.id}">Save Role</button>`;
       if (user.role === 'staff' || user.role === 'admin') {
-        actionsHtml += ` <button class="btn btn-sm btn-outline-primary rounded-pill edit-staff-btn" data-id="${user.id}" data-avatar="${user.avatar_url || ''}" data-bio="${user.bio || ''}">Edit Details</button>`;
+        actionsHtml += ` <button class="btn btn-sm btn-outline-primary rounded-pill edit-staff-btn" data-id="${user.id}" data-avatar="${user.avatar_url || ''}" data-bio="${user.bio || ''}" data-services="${user.services_offered || ''}">Edit Details</button>`;
       }
 
       row.innerHTML = `
@@ -780,10 +780,12 @@ async function loadUsers() {
 
         const id = targetBtn.getAttribute('data-id');
         const bio = targetBtn.getAttribute('data-bio');
+        const services = targetBtn.getAttribute('data-services');
 
         // Populate the modal fields
         document.getElementById('staffId').value = id;
         document.getElementById('staffBio').value = bio !== 'null' && bio !== 'undefined' ? bio : '';
+        document.getElementById('staffServices').value = services !== 'null' && services !== 'undefined' ? services : '';
         document.getElementById('staffAvatarFile').value = ''; // Reset file input
 
         // Show the modal
@@ -838,6 +840,7 @@ function setupEditStaffFormListener() {
 
       const staffIdVal = document.getElementById('staffId').value;
       const bioVal = document.getElementById('staffBio').value;
+      const servicesVal = document.getElementById('staffServices').value;
       const fileInput = document.getElementById('staffAvatarFile');
       const file = fileInput.files[0];
       const submitBtn = e.target.querySelector('button[type="submit"]');
@@ -873,7 +876,7 @@ function setupEditStaffFormListener() {
         }
 
         console.log("8. Updating 'profiles' table in database...");
-        const { error: updateError } = await supabase.from('profiles').update({ avatar_url: avatarUrl, bio: bioVal }).eq('id', staffIdVal);
+        const { error: updateError } = await supabase.from('profiles').update({ avatar_url: avatarUrl, bio: bioVal, services_offered: servicesVal }).eq('id', staffIdVal);
         
         console.log("9. Database update error status:", updateError);
         if (updateError) throw updateError;

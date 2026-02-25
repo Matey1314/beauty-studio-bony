@@ -6,6 +6,88 @@ const WORK_END = 18;
 const SLOT_DURATION = 60; // in minutes
 
 /**
+ * Step 1: Standardize the global state and navigation
+ * Ensure these exist clearly at the top for reliable access
+ */
+window.bookingState = window.bookingState || {
+  specialistId: '', // specialist UUID (for reliable DB matching)
+  specialistName: '', // specialist full name (for display)
+  service: '', // service name
+  serviceId: '', // service ID
+  servicePrice: 0, // service price
+  date: '', // booking date
+  time: '' // booking time
+};
+
+/**
+ * Step 2: Global navigation function for wizard
+ * Manages visible steps in the booking wizard
+ */
+window.goToStep = (step) => {
+  document.querySelectorAll('.wizard-step').forEach(el => el.classList.add('d-none'));
+  const stepEl = document.getElementById('step' + step);
+  if (stepEl) stepEl.classList.remove('d-none');
+};
+
+/**
+ * Step 1→2 Transition: Unified function that handles specialist selection,
+ * services fetching, filtering, and rendering in one go
+ * @param {string} id - The specialist's UUID
+ * @param {string} name - The specialist's full name
+ */
+window.selectSpecialist = async (id, name) => {
+  try {
+    console.log("🔥 1. CLICKED ID:", id, "NAME:", name);
+    window.bookingState.specialistId = id;
+    window.bookingState.specialistName = name; // Save name for the final submission if needed
+    window.goToStep(2);
+    
+    const servicesList = document.getElementById('wizardServicesList');
+    if (!servicesList) return;
+    servicesList.innerHTML = '<div class="col-12 text-center text-muted mt-4">Зареждане на услуги...</div>';
+
+    // Fetch services directly here
+    const { data: services, error } = await supabase.from('services').select('*');
+    if (error) throw error;
+    
+    console.log("🔥 2. ALL SERVICES:", services);
+
+    // Filter by specialist_id instead of name
+    const filteredServices = services.filter(service => service.specialist_id === id);
+
+    console.log("🔥 3. MATCHED SERVICES:", filteredServices);
+
+    servicesList.innerHTML = '';
+
+    if (filteredServices.length === 0) {
+      servicesList.innerHTML = '<div class="col-12 text-center text-muted mt-4">Този специалист няма добавени услуги.</div>';
+      return;
+    }
+
+    filteredServices.forEach(service => {
+      const safeServiceName = service.name.replace(/'/g, "\\'");
+      // Notice: using duration_minutes based on DB schema
+      const duration = service.duration_minutes || service.duration || 0;
+      
+      servicesList.innerHTML += `
+        <div class="col-md-6">
+          <div class="card border-0 shadow-sm rounded-4 h-100 p-3 text-center" style="cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'" onclick="window.bookingState.service = '${safeServiceName}'; window.bookingState.serviceId = '${service.id}'; window.bookingState.servicePrice = ${service.price}; window.goToStep(3)">
+            <div class="card-body">
+              <h5 class="fw-bold mb-2">${service.name}</h5>
+              <p class="text-muted small mb-3">${service.description || ''}</p>
+              <span class="badge bg-dark text-white p-2 fs-6">${service.price} лв. / ${duration} мин</span>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+  } catch (err) {
+    console.error("🔥 FATAL ERROR:", err);
+    document.getElementById('wizardServicesList').innerHTML = '<div class="col-12 text-center text-danger mt-4">Възникна грешка. Моля, опитайте отново.</div>';
+  }
+};
+
+/**
  * Check for active session and redirect to login if necessary
  */
 async function checkSession() {
@@ -25,16 +107,20 @@ async function checkSession() {
 
 /**
  * Initialize booking page
- * Load services and staff members
+ * Load specialists and services
  */
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     const session = await checkSession();
     if (!session) return;
 
-    await loadFormOptions();
-    setupFormSubmission();
-    setupTimeSlotListeners();
+    // Initialize step 1 with specialists
+    await initializeStep1();
+    
+    // Setup step 3 handlers for date/time
+    setupStep3();
+
+    console.log('Booking page initialized with booking state:', window.bookingState);
   } catch (error) {
     console.error('Error initializing booking page:', error);
     showBookingMessage('Error loading booking form. Please refresh the page.', 'danger');
@@ -42,67 +128,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 /**
- * Load form options (services and specialists)
+ * Initialize Step 1: Load and display specialists
  */
-async function loadFormOptions() {
-  try {
-    await loadServices();
-    await loadSpecialists();
-    initializeFlatpickr();
-  } catch (error) {
-    console.error('Error loading form options:', error);
-    showBookingMessage('Error loading form options. Please refresh the page.', 'danger');
-  }
-}
-
-/**
- * Load all services from the database and populate the service dropdown
- */
-async function loadServices() {
-  try {
-    const { data, error } = await supabase
-      .from('services')
-      .select('id, name, price, duration_minutes')
-      .order('name', { ascending: true });
-
-    if (error) {
-      console.error('Error fetching services:', error);
-      showBookingMessage('Error loading services. Please try again.', 'danger');
-      return;
-    }
-
-    const serviceSelect = document.getElementById('bookingService');
-    if (!serviceSelect) return;
-
-    // Clear existing options except the first placeholder
-    serviceSelect.innerHTML = '<option value="">Select Service...</option>';
-
-    // Add service options
-    if (data && data.length > 0) {
-      data.forEach(service => {
-        const option = document.createElement('option');
-        option.value = service.id;
-        option.textContent = `${service.name} - $${service.price} (${service.duration_minutes} min)`;
-        serviceSelect.appendChild(option);
-      });
-    } else {
-      serviceSelect.innerHTML = '<option value="">No services available</option>';
-      serviceSelect.disabled = true;
-    }
-  } catch (error) {
-    console.error('Unexpected error loading services:', error);
-    showBookingMessage('An unexpected error occurred. Please try again.', 'danger');
-  }
-}
-
-/**
- * Load all staff members from the database and populate the specialist dropdown
- */
-async function loadSpecialists() {
+async function initializeStep1() {
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, full_name')
+      .select('id, full_name, avatar_url, bio, services_offered')
       .eq('role', 'staff')
       .order('full_name', { ascending: true });
 
@@ -112,197 +144,107 @@ async function loadSpecialists() {
       return;
     }
 
-    const specialistSelect = document.getElementById('bookingSpecialist');
-    if (!specialistSelect) return;
+    const listContainer = document.getElementById('wizardSpecialistsList');
+    if (!listContainer) return;
 
-    // Clear existing options except the first placeholder
-    specialistSelect.innerHTML = '<option value="">Select Specialist...</option>';
+    listContainer.innerHTML = '';
 
-    // Add specialist options
-    if (data && data.length > 0) {
-      data.forEach(specialist => {
-        const option = document.createElement('option');
-        option.value = specialist.id;
-        option.textContent = specialist.full_name || 'Unknown Specialist';
-        specialistSelect.appendChild(option);
-      });
-    } else {
-      specialistSelect.innerHTML = '<option value="">No specialists available</option>';
-      specialistSelect.disabled = true;
+    if (!data || data.length === 0) {
+      listContainer.innerHTML = '<div class="text-center text-muted w-100">No specialists available at the moment.</div>';
+      return;
     }
+
+    // Render specialist cards
+    data.forEach(specialist => {
+      const card = document.createElement('div');
+      card.className = 'col-md-4 col-sm-6 text-center';
+      
+      // Extract exact name with proper fallbacks
+      const specName = specialist.full_name || specialist.name || specialist.first_name || 'Unknown';
+      const safeName = specName.replace(/'/g, "\\'"); // Escape single quotes for safe HTML attribute
+      
+      card.innerHTML = `
+        <div class="card border-0 shadow-sm rounded-4 p-3 cursor-pointer specialist-card" style="cursor: pointer; transition: all 0.3s;" onclick="window.selectSpecialist('${specialist.id}', '${safeName}')">
+          ${specialist.avatar_url ? `<img src="${specialist.avatar_url}" class="rounded-circle mx-auto d-block mb-3" style="width: 100px; height: 100px; object-fit: cover;" alt="${specName}">` : '<div class="mx-auto d-block mb-3 bg-light rounded-circle" style="width: 100px; height: 100px; display: flex; align-items: center; justify-content: center;"><i class="bi bi-person" style="font-size: 2rem; color: #ccc;"></i></div>'}
+          <h6 class="fw-bold">${specName}</h6>
+          ${specialist.bio ? `<p class="text-muted small">${specialist.bio}</p>` : ''}
+        </div>
+      `;
+      
+      listContainer.appendChild(card);
+    });
+
+    // Add hover effects to specialist cards
+    document.querySelectorAll('.specialist-card').forEach(card => {
+      card.addEventListener('mouseenter', function() {
+        this.style.transform = 'translateY(-5px)';
+        this.style.boxShadow = '0 10px 25px rgba(0, 0, 0, 0.1)';
+      });
+      card.addEventListener('mouseleave', function() {
+        this.style.transform = 'translateY(0)';
+        this.style.boxShadow = '';
+      });
+    });
   } catch (error) {
-    console.error('Unexpected error loading specialists:', error);
+    console.error('Unexpected error initializing step 1:', error);
     showBookingMessage('An unexpected error occurred. Please try again.', 'danger');
   }
 }
 
-/**
- * Setup time slot change event listeners
- */
-function setupTimeSlotListeners() {
-  const serviceSelect = document.getElementById('bookingService');
-  const specialistSelect = document.getElementById('bookingSpecialist');
-  const dateInput = document.getElementById('bookingDate');
 
-  if (serviceSelect) {
-    serviceSelect.addEventListener('change', generateTimeSlots);
-  }
-  if (specialistSelect) {
-    specialistSelect.addEventListener('change', generateTimeSlots);
-  }
+/**
+ * Handle service selection and move to step 3 (kept for backward compatibility if needed)
+ * Now handled inline in loadFilteredServices onclick handlers
+ */
+function selectService(service) {
+  window.bookingState.service = service.name;
+  window.bookingState.serviceId = service.id;
+  window.bookingState.servicePrice = service.price;
+
+  console.log('Selected Service:', service.name, 'ID:', service.id, 'Price:', service.price);
+
+  // Move to date/time selection
+  window.goToStep(3);
+}
+
+/**
+ * Setup Step 3: Date and Time selection
+ */
+function setupStep3() {
+  const dateInput = document.getElementById('wizardDate');
+  const timeInput = document.getElementById('wizardTime');
+  const submitBtn = document.getElementById('wizardSubmitBtn');
+
   if (dateInput) {
-    dateInput.addEventListener('change', generateTimeSlots);
+    dateInput.addEventListener('change', () => {
+      window.bookingState.date = dateInput.value;
+      console.log('Date selected:', window.bookingState.date);
+    });
+  }
+
+  if (timeInput) {
+    timeInput.addEventListener('change', () => {
+      window.bookingState.time = timeInput.value;
+      console.log('Time selected:', window.bookingState.time);
+    });
+  }
+
+  if (submitBtn) {
+    submitBtn.addEventListener('click', submitWizardBooking);
   }
 }
 
 /**
- * Initialize Flatpickr date picker
+ * Submit the booking with all validated data
  */
-function initializeFlatpickr() {
-  flatpickr("#bookingDate", {
-    minDate: "today", // Prevents booking in the past
-    dateFormat: "Y-m-d", // Matches our Supabase logic
-    altInput: true,
-    altFormat: "F j, Y", // Beautiful display format (e.g., February 24, 2026)
-    onChange: function(selectedDates, dateStr, instance) {
-      // Manually trigger the generateTimeSlots logic since we bypassed the native 'change' event
-      const event = new Event('change');
-      document.getElementById('bookingDate').dispatchEvent(event);
-    }
-  });
-}
-
-/**
- * Generate and display available time slots
- */
-async function generateTimeSlots() {
+async function submitWizardBooking() {
   try {
-    const serviceVal = document.getElementById('bookingService').value;
-    const specialistVal = document.getElementById('bookingSpecialist').value;
-    const dateVal = document.getElementById('bookingDate').value;
-    const container = document.getElementById('timeSlotsContainer');
-
-    // Clear the hidden time input when selections change
-    document.getElementById('bookingTime').value = '';
-
-    // If any required field is empty, show the initial message
-    if (!serviceVal || !specialistVal || !dateVal) {
-      container.innerHTML = '<p class="text-muted small w-100 text-center mb-0">Please select a Service, Specialist, and Date first to see available times.</p>';
+    // Validate all required fields from window.bookingState
+    if (!window.bookingState.specialistId || !window.bookingState.serviceId || !window.bookingState.date || !window.bookingState.time) {
+      showBookingMessage('Please complete all wizard steps. Specialist: ' + window.bookingState.specialistId + ', Service: ' + window.bookingState.serviceId, 'warning');
       return;
     }
 
-    // Show loading message
-    container.innerHTML = '<p class="text-muted small w-100 text-center mb-0">Loading available slots...</p>';
-
-    // Fetch existing bookings for the specialist on the selected date
-    const { data: bookings, error: bookingsError } = await supabase
-      .from('bookings')
-      .select('appointment_date, services(duration_minutes)')
-      .eq('employee_id', specialistVal)
-      .gte('appointment_date', `${dateVal}T00:00:00`)
-      .lte('appointment_date', `${dateVal}T23:59:59`)
-      .neq('status', 'cancelled');
-
-    if (bookingsError) {
-      console.error('Error fetching bookings:', bookingsError);
-      container.innerHTML = '<p class="text-danger small w-100 text-center mb-0">Error loading available times. Please try again.</p>';
-      return;
-    }
-
-    // Generate time slots
-    const slots = [];
-    for (let hour = WORK_START; hour < WORK_END; hour++) {
-      const timeString = `${String(hour).padStart(2, '0')}:00`;
-      slots.push({ hour, timeString });
-    }
-
-    // Get today's date to check for past times
-    const today = new Date();
-    const selectedDate = new Date(`${dateVal}T00:00:00`);
-    const isToday = today.toDateString() === selectedDate.toDateString();
-    const now = new Date();
-
-    // Render time slot buttons
-    let slotsHTML = '';
-
-    slots.forEach(slot => {
-      const slotStartTime = new Date(`${dateVal}T${slot.timeString}:00`);
-      const slotEndTime = new Date(slotStartTime.getTime() + SLOT_DURATION * 60000);
-
-      // Check if slot is in the past
-      const isPast = isToday && slotStartTime < now;
-
-      // Check for overlaps with existing bookings
-      let isOverlapping = false;
-      if (bookings && bookings.length > 0) {
-        isOverlapping = bookings.some(booking => {
-          const bookingStartTime = new Date(booking.appointment_date);
-          const bookingDuration = booking.services?.duration_minutes || 60;
-          const bookingEndTime = new Date(bookingStartTime.getTime() + bookingDuration * 60000);
-
-          return (slotStartTime < bookingEndTime) && (slotEndTime > bookingStartTime);
-        });
-      }
-
-      // Render button based on availability
-      if (isPast || isOverlapping) {
-        slotsHTML += `<button type="button" class="btn btn-danger btn-sm" style="width: 75px;" disabled>${slot.timeString}</button>`;
-      } else {
-        slotsHTML += `<button type="button" class="btn btn-outline-success btn-sm time-slot-btn" data-time="${slot.timeString}" style="width: 75px;">${slot.timeString}</button>`;
-      }
-    });
-
-    container.innerHTML = slotsHTML;
-
-    // Attach click listeners to time slot buttons
-    const timeSlotButtons = document.querySelectorAll('.time-slot-btn');
-    timeSlotButtons.forEach(button => {
-      button.addEventListener('click', (e) => {
-        e.preventDefault();
-
-        // Remove highlighting from all buttons
-        timeSlotButtons.forEach(btn => {
-          btn.classList.remove('btn-success', 'text-white');
-          btn.classList.add('btn-outline-success');
-        });
-
-        // Highlight the clicked button
-        button.classList.remove('btn-outline-success');
-        button.classList.add('btn-success', 'text-white');
-
-        // Set the hidden time input value
-        document.getElementById('bookingTime').value = button.dataset.time;
-      });
-    });
-  } catch (error) {
-    console.error('Error generating time slots:', error);
-    const container = document.getElementById('timeSlotsContainer');
-    container.innerHTML = '<p class="text-danger small w-100 text-center mb-0">Error loading available times. Please try again.</p>';
-  }
-}
-
-/**
- * Setup form submission handler
- */
-function setupFormSubmission() {
-  const bookingForm = document.getElementById('bookingForm');
-
-  if (!bookingForm) {
-    console.error('Booking form not found');
-    return;
-  }
-
-  bookingForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    await submitBooking();
-  });
-}
-
-/**
- * Submit booking to the database
- */
-async function submitBooking() {
-  try {
     // Get current user session
     const { data: { session } } = await supabase.auth.getSession();
 
@@ -312,10 +254,14 @@ async function submitBooking() {
       return;
     }
 
-    // Check if user has a phone number in auth metadata - required for booking
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user || !user.user_metadata || !user.user_metadata.phone || user.user_metadata.phone.trim() === '') {
+    // Get user profile to check for phone number
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('phone')
+      .eq('id', session.user.id)
+      .single();
+
+    if (profileError || !profile || !profile.phone) {
       showBookingMessage('Please complete your profile with a phone number before booking.', 'warning');
       setTimeout(() => {
         window.location.href = 'profile.html';
@@ -323,43 +269,33 @@ async function submitBooking() {
       return;
     }
 
-    // Get form values
-    const serviceVal = document.getElementById('bookingService').value;
-    const specialistVal = document.getElementById('bookingSpecialist').value;
-    const dateVal = document.getElementById('bookingDate').value;
-    const timeVal = document.getElementById('bookingTime').value;
+    // Disable submit button
+    const submitBtn = document.getElementById('wizardSubmitBtn');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Потвърждаване...';
 
-    // Validate inputs
-    if (!serviceVal || !specialistVal || !dateVal || !timeVal) {
-      showBookingMessage('Please fill in all required fields.', 'warning');
-      return;
-    }
-
-    // Disable form during submission
-    const submitButton = document.querySelector('#bookingForm button[type="submit"]');
-    if (submitButton) {
-      submitButton.disabled = true;
-      submitButton.textContent = 'Confirming...';
-    }
-
-    // Extract phone and name from user metadata for reference
-    const phone = user.user_metadata.phone;
-    const fullName = user.user_metadata.full_name;
-
-    // Combine date and time into a valid PostgreSQL timestamp
-    const appointmentDateTime = `${dateVal}T${timeVal}:00`;
+    // Combine date and time into ISO string
+    const appointmentDateTime = `${window.bookingState.date}T${window.bookingState.time}:00`;
     const appointmentDate = new Date(appointmentDateTime).toISOString();
 
-    // Create booking object
+    console.log('Submitting booking:', {
+      client_id: session.user.id,
+      service_id: window.bookingState.serviceId,
+      employee_id: window.bookingState.specialistId,
+      appointment_date: appointmentDate,
+      specialist_name: window.bookingState.specialistName
+    });
+
+    // Create booking
     const booking = {
       client_id: session.user.id,
-      service_id: serviceVal,
-      employee_id: specialistVal,
+      service_id: window.bookingState.serviceId,
+      employee_id: window.bookingState.specialistId,
       appointment_date: appointmentDate,
       status: 'confirmed'
     };
 
-    // Insert booking into database
     const { data, error } = await supabase
       .from('bookings')
       .insert([booking])
@@ -367,26 +303,28 @@ async function submitBooking() {
 
     if (error) {
       console.error('Error creating booking:', error);
-      showBookingMessage(`Error booking appointment: ${error.message}`, 'danger');
-      
-      // Re-enable form button
-      if (submitButton) {
-        submitButton.disabled = false;
-        submitButton.textContent = 'Confirm Booking';
-      }
+      showBookingMessage(`Грешка при резервация: ${error.message}`, 'danger');
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
       return;
     }
 
-    showBookingMessage('Booking confirmed! Redirecting to your profile...', 'success');
+    showBookingMessage('Резервацията е потвърдена! Пренасочване на профила...', 'success');
+
+    // Reset state
+    window.bookingState = {
+      specialistId: '',
+      specialistName: '',
+      service: '',
+      serviceId: '',
+      servicePrice: 0,
+      date: '',
+      time: ''
+    };
 
     // Reset form
-    document.getElementById('bookingForm').reset();
-
-    // Re-enable form button
-    if (submitButton) {
-      submitButton.disabled = false;
-      submitButton.textContent = 'Confirm Booking';
-    }
+    document.getElementById('wizardDate').value = '';
+    document.getElementById('wizardTime').value = '';
 
     // Redirect after 2 seconds
     setTimeout(() => {
@@ -394,14 +332,12 @@ async function submitBooking() {
     }, 2000);
   } catch (error) {
     console.error('Unexpected error submitting booking:', error);
-    showBookingMessage(`An unexpected error occurred: ${error.message}`, 'danger');
+    showBookingMessage(`Възникна грешка: ${error.message}`, 'danger');
 
-    // Re-enable form button
-    const submitButton = document.querySelector('#bookingForm button[type="submit"]');
-    if (submitButton) {
-      submitButton.disabled = false;
-      submitButton.textContent = 'Confirm Booking';
-    }
+    // Re-enable submit button
+    const submitBtn = document.getElementById('wizardSubmitBtn');
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Потвърди резервацията';
   }
 }
 
