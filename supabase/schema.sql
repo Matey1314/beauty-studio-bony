@@ -1,5 +1,5 @@
 -- Beauty Studio Bony Database Schema
--- Tables: profiles, services, bookings
+-- Tables: profiles, services, bookings, gallery, products
 
 -- Profiles table: stores user profile information
 -- Linked to Supabase auth.users via id (foreign key)
@@ -7,7 +7,9 @@ CREATE TABLE profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   full_name TEXT,
   phone TEXT,
-  role TEXT DEFAULT 'client'
+  role TEXT DEFAULT 'client',
+  avatar_url TEXT,
+  bio TEXT
 );
 
 -- Services table: stores beauty services offered by the salon
@@ -28,13 +30,33 @@ CREATE TABLE bookings (
   client_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   service_id UUID NOT NULL REFERENCES services(id) ON DELETE CASCADE,
   appointment_date TIMESTAMPTZ NOT NULL,
-  status TEXT DEFAULT 'pending'
+  status TEXT DEFAULT 'pending',
+  employee_id UUID REFERENCES profiles(id) ON DELETE SET NULL
+);
+
+-- Gallery table: stores gallery images for the salon
+CREATE TABLE gallery (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  image_url TEXT NOT NULL,
+  title TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Products table: stores premium product information
+CREATE TABLE products (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  image_url TEXT NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- Enable Row Level Security (RLS) on all tables
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gallery ENABLE ROW LEVEL SECURITY;
+ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 
 -- Function to automatically create a profile when a new user signs up
 CREATE OR REPLACE FUNCTION public.handle_new_user()

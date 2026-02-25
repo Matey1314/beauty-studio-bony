@@ -17,6 +17,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (servicesModal) {
             servicesModal.addEventListener('show.bs.modal', loadServices);
         }
+
+        // Load products when products modal is shown
+        const productsModal = document.getElementById('productsModal');
+        if (productsModal) {
+            productsModal.addEventListener('show.bs.modal', loadPremiumProducts);
+        }
     } catch (error) {
         console.error('Error initializing home page:', error);
         showMessage('Error loading data. Please refresh the page.', 'danger');
@@ -99,6 +105,47 @@ async function loadTeamMembers() {
             </div>
         </div>`;
     });
+}
+
+/**
+ * Load premium products from database
+ */
+async function loadPremiumProducts() {
+    try {
+        const { data: products, error } = await supabase
+            .from('products')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        const productsContainer = document.getElementById('productsModalList');
+        
+        if (!products || products.length === 0) {
+            productsContainer.innerHTML = '<p class="text-center text-muted">No premium products available at the moment.</p>';
+            return;
+        }
+
+        // Clear existing content
+        productsContainer.innerHTML = '';
+
+        // Render each product as a card
+        products.forEach(product => {
+            const col = document.createElement('div');
+            col.className = 'col-md-6';
+            col.innerHTML = `
+                <div class="bg-white p-4 rounded-4 shadow-sm h-100 text-center">
+                    <img src="${product.image_url}" alt="${product.name}" class="img-fluid rounded mb-3" style="max-height: 150px; object-fit: contain;">
+                    <h4 class="fw-bold mb-2">${product.name}</h4>
+                    <p class="text-muted small mb-0">${product.description || ''}</p>
+                </div>
+            `;
+            productsContainer.appendChild(col);
+        });
+    } catch (error) {
+        console.error('Error loading products:', error);
+        document.getElementById('productsModalList').innerHTML = '<p class="text-center text-danger">Error loading products. Please try again later.</p>';
+    }
 }
 
 /**

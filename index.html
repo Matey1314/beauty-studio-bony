@@ -64,7 +64,7 @@
         <!-- Features Section -->
         <div class="row text-center mt-5 pt-4 mb-5">
             <div class="col-md-4 mb-4">
-                <div class="p-4 bg-white rounded-4 shadow-sm h-100" style="transition: transform 0.3s ease, box-shadow 0.3s ease;" onmouseover="this.style.transform='translateY(-5px)'; this.classList.replace('shadow-sm', 'shadow-lg');" onmouseout="this.style.transform='translateY(0)'; this.classList.replace('shadow-lg', 'shadow-sm');">
+                <div class="p-4 bg-white rounded-4 shadow-sm h-100" style="transition: transform 0.3s ease, box-shadow 0.3s ease; cursor: pointer;" onmouseover="this.style.transform='translateY(-5px)'; this.classList.replace('shadow-sm', 'shadow-lg');" onmouseout="this.style.transform='translateY(0)'; this.classList.replace('shadow-lg', 'shadow-sm');" data-bs-toggle="modal" data-bs-target="#productsModal">
                     <div class="display-4 mb-3">✨</div>
                     <h4 class="fw-bold text-dark">Premium Products</h4>
                     <p class="text-muted">We use only the highest quality products for your skin and hair.</p>
@@ -164,6 +164,23 @@
                 </div>
                 <div class="modal-body p-4 p-md-5 bg-light">
                     <div class="row g-4" id="servicesModalList">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Products Modal -->
+    <div class="modal fade" id="productsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden">
+                <div class="modal-header bg-dark text-white border-0 p-4">
+                    <h3 class="modal-title fw-bold mb-0">Our Premium Products</h3>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 p-md-5 bg-light">
+                    <div class="row g-4" id="productsModalList">
+                        <div class="text-center text-muted w-100">Loading products...</div>
                     </div>
                 </div>
             </div>

@@ -50,15 +50,20 @@ async function initializeDashboard(session) {
       if (scheduleSec) scheduleSec.style.display = 'block';
       const gallerySec = document.getElementById('adminGallerySection');
       if (gallerySec) gallerySec.style.display = 'block';
+      const productsSec = document.getElementById('adminProductsSection');
+      if (productsSec) productsSec.style.display = 'block';
       await loadManualBookingOptions();
       await loadSpecialists();
       await loadServices();
       await loadUsers();
       await loadGallery();
+      await loadProducts();
       await loadSchedule(session);
       setupServiceFormListener();
       setupGalleryFormListener();
       setupGalleryDeleteListener();
+      setupProductFormListener();
+      setupProductDeleteListener();
     } else {
       // Client or other role: Should not be here
       console.warn('User role does not have dashboard access');
@@ -936,6 +941,186 @@ function setupGalleryDeleteListener() {
       await loadGallery();
     } catch (error) {
       console.error('Error deleting image:', error);
+      alert('Error: ' + error.message);
+    }
+  });
+}
+
+/**
+ * Load products from the database and render them
+ */
+async function loadProducts() {
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching products:', error);
+      return;
+    }
+
+    const productsListContainer = document.getElementById('adminProductsList');
+    if (!productsListContainer) return;
+
+    productsListContainer.innerHTML = '';
+
+    data.forEach(item => {
+      const col = document.createElement('div');
+      col.className = 'col-md-6 col-lg-4';
+      col.innerHTML = `
+        <div class="card shadow-sm border-0 position-relative">
+          <img src="${item.image_url}" alt="${item.name || 'Product'}" class="card-img-top" style="height: 250px; object-fit: cover;">
+          <div class="card-body">
+            <h5 class="card-title fw-bold">${item.name}</h5>
+            <p class="card-text text-muted small">${item.description || ''}</p>
+          </div>
+          <button class="btn btn-sm btn-danger delete-product-btn position-absolute top-0 end-0 m-2" data-id="${item.id}" data-url="${item.image_url}">Delete</button>
+        </div>
+      `;
+      productsListContainer.appendChild(col);
+    });
+  } catch (error) {
+    console.error('Unexpected error loading products:', error);
+  }
+}
+
+/**
+ * Setup event listener for the product upload form (Bulletproof version)
+ */
+function setupProductFormListener() {
+  const productFileInput = document.getElementById('productImageFile');
+  const productUploadForm = productFileInput ? productFileInput.closest('form') : null;
+  const productUploadBtn = productUploadForm ? productUploadForm.querySelector('button[type="submit"]') : (productFileInput ? productFileInput.parentElement.querySelector('button') : null);
+
+  const handleProductUpload = async (e) => {
+    if (e) e.preventDefault(); // CRITICAL: Prevent page reload!
+
+    if (!productFileInput || !productFileInput.files[0]) {
+      alert('Please select an image for the product.');
+      return;
+    }
+
+    const file = productFileInput.files[0];
+    const nameInput = document.getElementById('productName');
+    const descInput = document.getElementById('productDescription');
+
+    const name = nameInput ? nameInput.value : '';
+    const desc = descInput ? descInput.value : '';
+
+    if (!name) {
+      alert('Please enter a product name.');
+      return;
+    }
+
+    const originalBtnText = productUploadBtn.innerHTML;
+    productUploadBtn.innerHTML = 'Uploading... Please wait';
+    productUploadBtn.disabled = true;
+
+    try {
+      // 1. Upload to Supabase Storage ('products' bucket)
+      const fileExt = file.name.split('.').pop();
+      const fileName = `product-${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('products')
+        .upload(fileName, file, { cacheControl: '3600', upsert: false });
+
+      if (uploadError) throw new Error("Storage Upload failed: " + uploadError.message);
+
+      // 2. Get the Public URL
+      const { data: urlData } = supabase.storage.from('products').getPublicUrl(fileName);
+      const imageUrl = urlData.publicUrl;
+
+      // 3. Save to 'products' Database Table
+      const { error: dbError } = await supabase
+        .from('products')
+        .insert([{ image_url: imageUrl, name: name, description: desc }]);
+
+      if (dbError) throw new Error("Database insert failed: " + dbError.message);
+
+      alert('Product added successfully!');
+      
+      // Reset fields
+      if (productUploadForm) productUploadForm.reset();
+      else {
+        productFileInput.value = '';
+        if (nameInput) nameInput.value = '';
+        if (descInput) descInput.value = '';
+      }
+      
+      // Refresh the admin products view
+      if (typeof loadProducts === 'function') {
+        await loadProducts();
+      }
+
+    } catch (error) {
+      console.error('Product upload error:', error);
+      alert(error.message);
+    } finally {
+      productUploadBtn.innerHTML = originalBtnText;
+      productUploadBtn.disabled = false;
+    }
+  };
+
+  // Safely attach the event listener
+  if (productUploadForm) {
+    productUploadForm.onsubmit = handleProductUpload;
+  } else if (productUploadBtn) {
+    productUploadBtn.onclick = handleProductUpload;
+  }
+}
+
+/**
+ * Setup event delegation for deleting products
+ */
+function setupProductDeleteListener() {
+  const productsListContainer = document.getElementById('adminProductsList');
+  if (!productsListContainer) return;
+
+  productsListContainer.addEventListener('click', async (e) => {
+    const deleteBtn = e.target.closest('.delete-product-btn');
+    if (!deleteBtn) return;
+
+    const id = deleteBtn.dataset.id;
+    const imageUrl = deleteBtn.dataset.url;
+
+    if (!confirm('Are you sure you want to delete this product?')) {
+      return;
+    }
+
+    try {
+      // Extract filename from URL
+      const urlParts = imageUrl.split('/');
+      const fileName = urlParts[urlParts.length - 1];
+
+      // Delete from storage
+      const { error: storageError } = await supabase.storage
+        .from('products')
+        .remove([fileName]);
+
+      if (storageError) {
+        console.error('Storage delete error:', storageError);
+        // Continue with database deletion even if storage delete fails
+      }
+
+      // Delete from database
+      const { error: dbError } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', id);
+
+      if (dbError) {
+        console.error('Database delete error:', dbError);
+        alert('Failed to delete product record');
+        return;
+      }
+
+      alert('Product deleted successfully!');
+      await loadProducts();
+    } catch (error) {
+      console.error('Error deleting product:', error);
       alert('Error: ' + error.message);
     }
   });

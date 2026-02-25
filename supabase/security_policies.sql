@@ -163,3 +163,66 @@ CREATE POLICY "Users can delete their own bookings, admins can delete any"
       WHERE id = auth.uid() AND role = 'admin'
     )
   );
+-- ============================================================================
+-- GALLERY TABLE POLICIES
+-- ============================================================================
+
+-- Enable RLS on gallery table
+ALTER TABLE gallery ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Anyone (including unauthenticated users) can SELECT gallery images
+CREATE POLICY "Anyone can read gallery images"
+  ON gallery FOR SELECT
+  USING (true);
+
+-- Policy: Only admins can INSERT gallery images
+CREATE POLICY "Only admins can insert gallery images"
+  ON gallery FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+
+-- Policy: Only admins can DELETE gallery images
+CREATE POLICY "Only admins can delete gallery images"
+  ON gallery FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+
+-- ============================================================================
+-- PRODUCTS TABLE POLICIES
+-- ============================================================================
+
+-- Enable RLS on products table
+ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Anyone (including unauthenticated users) can SELECT products
+CREATE POLICY "Anyone can read products"
+  ON products FOR SELECT
+  USING (true);
+
+-- Policy: Only admins can INSERT products
+CREATE POLICY "Only admins can insert products"
+  ON products FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+
+-- Policy: Only admins can DELETE products
+CREATE POLICY "Only admins can delete products"
+  ON products FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
