@@ -1,32 +1,29 @@
 import { supabase } from '../services/supabaseClient.js';
 
 /**
- * Load profile information from Supabase Auth metadata
+ * Load profile information from public.profiles table with fallback to auth metadata
  */
 const loadProfileInfo = async () => {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user && user.user_metadata) {
-      if (document.getElementById('profileName')) {
-        document.getElementById('profileName').value = user.user_metadata.full_name || '';
-      }
-      if (document.getElementById('profilePhone')) {
-        document.getElementById('profilePhone').value = user.user_metadata.phone || '';
-      }
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    // Fetch real data from profiles table
+    const { data: profile } = await supabase.from('profiles').select('full_name, phone').eq('id', user.id).single();
+    
+    if (profile) {
+      if (document.getElementById('profileName')) document.getElementById('profileName').value = profile.full_name || user.user_metadata.full_name || '';
+      if (document.getElementById('profilePhone')) document.getElementById('profilePhone').value = profile.phone || user.user_metadata.phone || '';
     }
+  }
 
-    // Check if newly registered and show welcome alert
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('new') === 'true') {
-      const profileAlert = document.getElementById('profileAlert');
-      if (profileAlert) {
-        profileAlert.classList.remove('d-none');
-      }
-      // Remove the query parameter from URL for cleaner navigation
-      window.history.replaceState({}, document.title, window.location.pathname);
+  // Check if newly registered and show welcome alert
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('new') === 'true') {
+    const profileAlert = document.getElementById('profileAlert');
+    if (profileAlert) {
+      profileAlert.classList.remove('d-none');
     }
-  } catch (error) {
-    console.error('Error loading profile info:', error);
+    // Remove the query parameter from URL for cleaner navigation
+    window.history.replaceState({}, document.title, window.location.pathname);
   }
 };
 
@@ -93,14 +90,19 @@ function setupFormSubmission() {
     }
 
     try {
-      // Update user metadata in Supabase Auth
-      const { error } = await supabase.auth.updateUser({
-        data: { full_name: fullName, phone: phone }
-      });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("No user logged in.");
 
-      if (error) {
-        throw error;
-      }
+      // Update the public.profiles table directly
+      const { error } = await supabase
+        .from('profiles')
+        .update({ full_name: fullName, phone: phone })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      
+      // Optionally update auth metadata too just in case
+      await supabase.auth.updateUser({ data: { full_name: fullName, phone: phone } });
 
       // Hide the new registration alert if visible
       const profileAlert = document.getElementById('profileAlert');

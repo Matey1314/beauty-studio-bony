@@ -309,9 +309,23 @@ function setupStep3() {
  */
 async function submitWizardBooking() {
   try {
-    // Validate date and time selection
-    if (!window.bookingState.date || !window.bookingState.time) {
-      alert("Моля, изберете дата и час за вашата резервация!");
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      alert("Моля, влезте в профила си, за да запазите час.");
+      return;
+    }
+
+    // Check the profiles table directly for the phone number
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('phone, full_name')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profileData || !profileData.phone || profileData.phone.trim() === '') {
+      alert("Моля, въведете своя телефонен номер в Профила си преди да запазите час.");
+      window.location.href = 'profile.html?new=true';
       return;
     }
 
@@ -321,27 +335,9 @@ async function submitWizardBooking() {
       return;
     }
 
-    // Get current user session
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (!session || !session.user) {
-      showBookingMessage('Please log in to book an appointment.', 'danger');
-      window.location.href = 'login.html';
-      return;
-    }
-
-    // Get user profile to check for phone number
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('phone')
-      .eq('id', session.user.id)
-      .single();
-
-    if (profileError || !profile || !profile.phone) {
-      showBookingMessage('Please complete your profile with a phone number before booking.', 'warning');
-      setTimeout(() => {
-        window.location.href = 'profile.html';
-      }, 2000);
+    // Validate date and time selection
+    if (!window.bookingState.date || !window.bookingState.time) {
+      alert("Моля, изберете дата и час за вашата резервация!");
       return;
     }
 
@@ -356,7 +352,7 @@ async function submitWizardBooking() {
     const appointmentDate = new Date(appointmentDateTime).toISOString();
 
     console.log('Submitting booking:', {
-      client_id: session.user.id,
+      client_id: user.id,
       service_id: window.bookingState.serviceId,
       employee_id: window.bookingState.specialistId,
       appointment_date: appointmentDate,
@@ -365,7 +361,7 @@ async function submitWizardBooking() {
 
     // Create booking
     const booking = {
-      client_id: session.user.id,
+      client_id: user.id,
       service_id: window.bookingState.serviceId,
       employee_id: window.bookingState.specialistId,
       appointment_date: appointmentDate,

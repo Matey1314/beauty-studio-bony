@@ -478,11 +478,23 @@ async function loadSchedule(session) {
 
             tableHTML += `</tbody></table></div>`;
 
+            // Calculate average rating for this specialist
+            const ratedBookings = specBookings.filter(b => b.rating && !isNaN(b.rating));
+            let averageRatingHtml = '';
+
+            if (ratedBookings.length > 0) {
+                const sumRatings = ratedBookings.reduce((sum, curr) => sum + Number(curr.rating), 0);
+                const avgRating = (sumRatings / ratedBookings.length).toFixed(1); // e.g., 4.8
+                averageRatingHtml = `<span class="badge bg-warning text-dark ms-2 fs-6 shadow-sm">⭐ ${avgRating}/5 <small class="text-muted fw-normal">(${ratedBookings.length} мнения)</small></span>`;
+            } else {
+                averageRatingHtml = `<span class="badge bg-light text-secondary ms-2 border">Няма оценки</span>`;
+            }
+
             const accordionItem = `
                 <div class="accordion-item border-0 border-bottom">
                     <h2 class="accordion-header" id="${headingId}">
                         <button class="accordion-button ${isFirst ? '' : 'collapsed'} fw-bold fs-5 bg-light text-dark" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="${isFirst ? 'true' : 'false'}" aria-controls="${collapseId}">
-                            💇‍♀️ ${specialist} <span class="badge bg-primary ms-3 rounded-pill">${specBookings.length} bookings</span>
+                            💇‍♀️ ${specialist} <span class="badge bg-primary ms-3 rounded-pill">${specBookings.length} bookings</span>${averageRatingHtml}
                         </button>
                     </h2>
                     <div id="${collapseId}" class="accordion-collapse collapse ${isFirst ? 'show' : ''}" aria-labelledby="${headingId}" data-bs-parent="#adminScheduleAccordion">
