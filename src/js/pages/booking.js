@@ -208,24 +208,94 @@ function selectService(service) {
 }
 
 /**
- * Setup Step 3: Date and Time selection
+ * Setup Step 3: Date and Time selection with dynamic availability
  */
 function setupStep3() {
-  const dateInput = document.getElementById('wizardDate');
-  const timeInput = document.getElementById('wizardTime');
+  const wizardDateInput = document.getElementById('wizardDate');
+  const timeSlotsContainer = document.getElementById('timeSlotsContainer');
   const submitBtn = document.getElementById('wizardSubmitBtn');
 
-  if (dateInput) {
-    dateInput.addEventListener('change', () => {
-      window.bookingState.date = dateInput.value;
-      console.log('Date selected:', window.bookingState.date);
-    });
-  }
+  // Prevent picking past dates
+  const today = new Date().toISOString().split('T')[0];
+  if (wizardDateInput) wizardDateInput.setAttribute('min', today);
 
-  if (timeInput) {
-    timeInput.addEventListener('change', () => {
-      window.bookingState.time = timeInput.value;
-      console.log('Time selected:', window.bookingState.time);
+  if (wizardDateInput) {
+    wizardDateInput.addEventListener('change', async (e) => {
+      const selectedDate = e.target.value;
+      window.bookingState.date = selectedDate;
+      window.bookingState.time = ''; // Reset time selection
+
+      if (!selectedDate) {
+        timeSlotsContainer.innerHTML = '<div class="text-muted mt-2 small">Моля, изберете дата първо.</div>';
+        return;
+      }
+
+      timeSlotsContainer.innerHTML = '<div class="spinner-border spinner-border-sm text-dark me-2" role="status"></div><span class="text-muted">Проверка на графика...</span>';
+
+      try {
+        // Fetch booked times for THIS specialist on THIS date
+        const { data: bookings, error } = await supabase
+          .from('bookings')
+          .select('appointment_date')
+          .eq('employee_id', window.bookingState.specialistId)
+          .gte('appointment_date', `${selectedDate}T00:00:00`)
+          .lt('appointment_date', `${selectedDate}T23:59:59`)
+          .in('status', ['confirmed', 'pending']);
+        
+        if (error) throw error;
+
+        // Extract just the "HH:MM" part from the database time strings
+        const bookedTimes = bookings.map(b => {
+          const date = new Date(b.appointment_date);
+          const hours = String(date.getHours()).padStart(2, '0');
+          const minutes = String(date.getMinutes()).padStart(2, '0');
+          return `${hours}:${minutes}`;
+        });
+        
+        console.log('🔥 Booked times for', window.bookingState.specialistName, 'on', selectedDate, ':', bookedTimes);
+        
+        // Define your salon's working hours here
+        const allSlots = ['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
+        
+        timeSlotsContainer.innerHTML = '';
+        let hasAvailable = false;
+
+        allSlots.forEach(slot => {
+          const isBooked = bookedTimes.includes(slot);
+          
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = `btn rounded-pill px-3 py-2 fw-bold ${isBooked ? 'btn-danger disabled opacity-50' : 'btn-outline-dark time-slot-btn'}`;
+          btn.innerText = slot;
+          btn.disabled = isBooked;
+          
+          if (!isBooked) {
+            hasAvailable = true;
+            btn.onclick = () => {
+              // Deselect others (remove green, add back outline)
+              document.querySelectorAll('.time-slot-btn').forEach(b => {
+                b.classList.remove('btn-success', 'text-white');
+                b.classList.add('btn-outline-dark');
+              });
+              // Select current (remove outline, add green)
+              btn.classList.remove('btn-outline-dark');
+              btn.classList.add('btn-success', 'text-white');
+              window.bookingState.time = slot;
+              console.log('🔥 Time selected:', slot);
+            };
+          }
+          
+          timeSlotsContainer.appendChild(btn);
+        });
+
+        if (!hasAvailable) {
+          timeSlotsContainer.innerHTML = '<div class="text-danger fw-bold mt-2">Няма свободни часове за тази дата!</div>';
+        }
+
+      } catch (err) {
+        console.error("🔥 ERROR FETCHING SLOTS:", err);
+        timeSlotsContainer.innerHTML = '<div class="text-danger mt-2">Грешка при зареждане на часовете.</div>';
+      }
     });
   }
 
@@ -239,8 +309,14 @@ function setupStep3() {
  */
 async function submitWizardBooking() {
   try {
+    // Validate date and time selection
+    if (!window.bookingState.date || !window.bookingState.time) {
+      alert("Моля, изберете дата и час за вашата резервация!");
+      return;
+    }
+
     // Validate all required fields from window.bookingState
-    if (!window.bookingState.specialistId || !window.bookingState.serviceId || !window.bookingState.date || !window.bookingState.time) {
+    if (!window.bookingState.specialistId || !window.bookingState.serviceId) {
       showBookingMessage('Please complete all wizard steps. Specialist: ' + window.bookingState.specialistId + ', Service: ' + window.bookingState.serviceId, 'warning');
       return;
     }
@@ -324,7 +400,6 @@ async function submitWizardBooking() {
 
     // Reset form
     document.getElementById('wizardDate').value = '';
-    document.getElementById('wizardTime').value = '';
 
     // Redirect after 2 seconds
     setTimeout(() => {

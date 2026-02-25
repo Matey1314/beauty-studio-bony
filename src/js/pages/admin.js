@@ -342,7 +342,9 @@ async function loadSchedule(session) {
                 id, 
                 appointment_date, 
                 status, 
-                cancelled_by, 
+                cancelled_by,
+                rating,
+                feedback_notes,
                 services!bookings_service_id_fkey(name),
                 specialist:profiles!bookings_employee_id_fkey(full_name),
                 client:client_id(*)
@@ -376,7 +378,9 @@ async function loadSchedule(session) {
                 service: booking.services?.name || 'Unknown Service',
                 user_email: booking.client?.email || 'Unknown',
                 status: booking.status || 'pending',
-                cancelled_by: booking.cancelled_by
+                cancelled_by: booking.cancelled_by,
+                rating: booking.rating,
+                feedback_notes: booking.feedback_notes
             };
         });
 
@@ -447,10 +451,24 @@ async function loadSchedule(session) {
                 const dateObj = new Date(`${booking.date} ${booking.time}`);
                 const formattedDate = dateObj.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
 
+                // Build feedback HTML - only show to admins
+                let adminFeedbackHTML = '';
+                if (userRole === 'admin' && booking.rating) {
+                    adminFeedbackHTML = `
+                        <div class="mt-2 p-2 bg-light rounded small border-start border-warning border-3">
+                            <strong>Обратна връзка:</strong> ⭐ ${booking.rating}/5 <br>
+                            <span class="text-muted">"${booking.feedback_notes || 'Няма коментар'}"</span>
+                        </div>
+                    `;
+                }
+
                 tableHTML += `
                     <tr>
                         <td class="fw-bold">${formattedDate}</td>
-                        <td>${booking.service}</td>
+                        <td>
+                            ${booking.service}
+                            ${adminFeedbackHTML}
+                        </td>
                         <td>${booking.user_email || 'Unknown'}</td>
                         <td>${statusBadge}</td>
                         <td>${actionButtons}</td>

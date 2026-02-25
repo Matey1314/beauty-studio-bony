@@ -48,12 +48,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Load user profile information from auth metadata
     await loadProfileInfo();
     setupFormSubmission();
+    setupFeedbackFormSubmission();
 
     // Load bookings
     await loadMyBookings(session.user.id);
 
     // Setup cancel button event delegation
     setupCancelButtonDelegation();
+    
+    // Setup feedback button event delegation
+    setupFeedbackButtonDelegation();
   } catch (error) {
     console.error('Error initializing profile page:', error);
     showMessage('Error loading profile. Please refresh the page.', 'danger');
@@ -116,6 +120,61 @@ function setupFormSubmission() {
 }
 
 /**
+ * Setup feedback form submission handling
+ */
+function setupFeedbackFormSubmission() {
+  const form = document.getElementById('feedbackForm');
+  
+  if (!form) return;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const bookingId = document.getElementById('feedbackBookingId').value;
+    const rating = parseInt(document.getElementById('feedbackRating').value);
+    const notes = document.getElementById('feedbackNotes').value.trim();
+
+    if (!bookingId || !rating || rating < 1 || rating > 5) {
+      alert('Please provide a valid rating (1-5).');
+      return;
+    }
+
+    const submitBtn = document.getElementById('submitFeedbackBtn');
+    submitBtn.innerHTML = 'Submitting...';
+    submitBtn.disabled = true;
+
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ rating: rating, feedback_notes: notes })
+        .eq('id', bookingId);
+
+      if (error) throw error;
+
+      // Close the modal
+      const feedbackModal = bootstrap.Modal.getInstance(document.getElementById('feedbackModal'));
+      if (feedbackModal) {
+        feedbackModal.hide();
+      }
+
+      showMessage('Thank you! Your feedback has been submitted.', 'success');
+
+      // Reload bookings to reflect the change
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session && session.user) {
+        await loadMyBookings(session.user.id);
+      }
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      alert('Failed to submit feedback: ' + error.message);
+    } finally {
+      submitBtn.innerHTML = 'Изпрати оценка';
+      submitBtn.disabled = false;
+    }
+  });
+}
+
+/**
  * Display a message in the profile message div
  * @param {string} message - The message to display
  * @param {string} type - Bootstrap alert type (success, danger, warning, info)
@@ -151,7 +210,7 @@ async function loadMyBookings(userId) {
   try {
     const { data: bookings, error } = await supabase
       .from('bookings')
-      .select('id, appointment_date, status, service_id, employee_id, services(name), specialist:profiles!bookings_employee_id_fkey(full_name)')
+      .select('id, appointment_date, status, service_id, employee_id, rating, services(name), specialist:profiles!bookings_employee_id_fkey(full_name)')
       .eq('client_id', userId)
       .order('appointment_date', { ascending: true });
 
@@ -228,6 +287,8 @@ function renderBookingsTable(containerId, bookings) {
     let buttonsHTML = '';
     if (isEditable) {
       buttonsHTML = `<button class="btn btn-sm btn-danger cancel-btn" data-id="${booking.id}">Cancel</button>`;
+    } else if (booking.status === 'completed' && !booking.rating) {
+      buttonsHTML = `<button class="btn btn-sm btn-primary feedback-btn" data-id="${booking.id}">Leave Feedback</button>`;
     }
 
     html += `
@@ -260,6 +321,32 @@ function getStatusBadgeClass(status) {
 }
 
 
+
+/**
+ * Setup event delegation for feedback buttons
+ * Opens the feedback modal when clicked
+ */
+function setupFeedbackButtonDelegation() {
+  document.addEventListener('click', async (e) => {
+    const feedbackBtn = e.target.closest('.feedback-btn');
+    
+    if (feedbackBtn) {
+      const bookingId = feedbackBtn.getAttribute('data-id');
+      if (!bookingId) return;
+      
+      // Set the booking ID in the hidden input
+      document.getElementById('feedbackBookingId').value = bookingId;
+      
+      // Reset the form
+      document.getElementById('feedbackForm').reset();
+      document.getElementById('feedbackRating').value = 5;
+      
+      // Show the modal
+      const feedbackModal = new bootstrap.Modal(document.getElementById('feedbackModal'));
+      feedbackModal.show();
+    }
+  });
+}
 
 /**
  * Setup event delegation for cancel buttons
