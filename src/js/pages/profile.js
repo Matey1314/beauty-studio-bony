@@ -19,12 +19,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadUserProfile(session.user.id);
     setupFormSubmission(session.user.id);
 
-    // Load modal options and bookings
-    await loadModalOptions();
+    // Load bookings
     await loadMyBookings(session.user.id);
-
-    // Setup edit booking form submission
-    setupEditBookingFormSubmission();
 
     // Setup cancel button event delegation
     setupCancelButtonDelegation();
@@ -134,67 +130,7 @@ function showMessage(message, type) {
   }
 }
 
-/**
- * Load modal options (services and specialists)
- * Populate the edit booking form dropdowns
- */
-async function loadModalOptions() {
-  try {
-    // Fetch all services
-    const { data: services, error: servicesError } = await supabase
-      .from('services')
-      .select('id, name');
 
-    if (servicesError) {
-      console.error('Error fetching services:', servicesError);
-      return;
-    }
-
-    // Fetch all staff members
-    const { data: staff, error: staffError } = await supabase
-      .from('profiles')
-      .select('id, full_name')
-      .eq('role', 'staff');
-
-    if (staffError) {
-      console.error('Error fetching staff:', staffError);
-      return;
-    }
-
-    // Populate services dropdown
-    const serviceSelect = document.getElementById('editService');
-    if (serviceSelect) {
-      services.forEach(service => {
-        const option = document.createElement('option');
-        option.value = service.id;
-        option.textContent = service.name;
-        serviceSelect.appendChild(option);
-      });
-    }
-
-    // Populate specialists dropdown
-    const specialistSelect = document.getElementById('editSpecialist');
-    if (specialistSelect) {
-      staff.forEach(member => {
-        const option = document.createElement('option');
-        option.value = member.id;
-        option.textContent = member.full_name;
-        specialistSelect.appendChild(option);
-      });
-    }
-
-    // Initialize Flatpickr for the edit modal date/time input
-    flatpickr('#editDateTime', {
-      enableTime: true,
-      minDate: 'today',
-      dateFormat: 'Y-m-dTH:i',
-      altInput: true,
-      altFormat: 'F j, Y at h:i K'
-    });
-  } catch (error) {
-    console.error('Error loading modal options:', error);
-  }
-}
 
 /**
  * Load user's bookings and display in table
@@ -232,22 +168,25 @@ async function loadMyBookings(userId) {
       const appointmentDate = new Date(booking.appointment_date);
       const formattedDate = appointmentDate.toLocaleString();
       const specialistName = booking.specialist?.full_name || 'N/A';
+      const isEditable = booking.status !== 'cancelled' && booking.status !== 'completed';
+      const statusDisplay = booking.status.charAt(0).toUpperCase() + booking.status.slice(1);
+
+      let buttonsHTML = '';
+      if (isEditable) {
+        buttonsHTML = `
+          <button class="btn btn-sm btn-danger cancel-btn" data-id="${booking.id}">Cancel</button>
+        `;
+      }
 
       row.innerHTML = `
         <td>${booking.services.name}</td>
         <td>${specialistName}</td>
         <td>${formattedDate}</td>
-        <td><span class="badge bg-${getStatusBadgeClass(booking.status)}">${booking.status}</span></td>
-        <td>
-          <button class="btn btn-sm btn-warning edit-btn" data-id="${booking.id}" data-service-id="${booking.service_id}" data-employee-id="${booking.employee_id}" data-date="${booking.appointment_date}">Edit</button>
-          <button class="btn btn-sm btn-danger cancel-btn" data-id="${booking.id}">Cancel</button>
-        </td>
+        <td><span class="badge bg-${getStatusBadgeClass(booking.status)}">${statusDisplay}</span></td>
+        <td>${buttonsHTML}</td>
       `;
       tableBody.appendChild(row);
     });
-
-    // Attach event listeners to Edit buttons
-    attachEditButtonListeners();
   } catch (error) {
     console.error('Unexpected error loading bookings:', error);
     showBookingsMessage('An unexpected error occurred.', 'danger');
@@ -269,120 +208,12 @@ function getStatusBadgeClass(status) {
   return statusClasses[status] || 'secondary';
 }
 
-/**
- * Attach event listeners to Edit buttons
- */
-function attachEditButtonListeners() {
-  const editButtons = document.querySelectorAll('.edit-btn');
-  editButtons.forEach(button => {
-    button.addEventListener('click', function() {
-      const bookingId = this.getAttribute('data-id');
-      const serviceId = this.getAttribute('data-service-id');
-      const employeeId = this.getAttribute('data-employee-id');
-      const appointmentDate = this.getAttribute('data-date');
 
-      // Set the hidden booking ID
-      document.getElementById('editBookingId').value = bookingId;
-
-      // Set the service dropdown
-      document.getElementById('editService').value = serviceId;
-
-      // Set the specialist dropdown
-      document.getElementById('editSpecialist').value = employeeId;
-
-      // Format and set the datetime-local input
-      const date = new Date(appointmentDate);
-      const formattedDateTime = formatDateTimeLocal(date);
-      document.getElementById('editDateTime').value = formattedDateTime;
-
-      // Show the modal
-      const modal = new bootstrap.Modal(document.getElementById('editBookingModal'));
-      modal.show();
-    });
-  });
-}
-
-/**
- * Format date for datetime-local input (YYYY-MM-DDThh:mm)
- * @param {Date} date - The date to format
- * @returns {string} Formatted datetime string
- */
-function formatDateTimeLocal(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
-}
-
-/**
- * Setup edit booking form submission
- */
-function setupEditBookingFormSubmission() {
-  const form = document.getElementById('editBookingForm');
-  if (!form) return;
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const bookingId = document.getElementById('editBookingId').value;
-    const newServiceId = document.getElementById('editService').value;
-    const newEmployeeId = document.getElementById('editSpecialist').value;
-    const newDateTime = document.getElementById('editDateTime').value;
-
-    // Validate inputs
-    if (!bookingId || !newServiceId || !newEmployeeId || !newDateTime) {
-      showBookingsMessage('Please fill in all fields.', 'warning');
-      return;
-    }
-
-    try {
-      // Convert the datetime-local value to ISO 8601 format
-      const dateTimeObj = new Date(newDateTime);
-      const isoDateTime = dateTimeObj.toISOString();
-
-      // Update the booking in Supabase
-      const { error } = await supabase
-        .from('bookings')
-        .update({
-          service_id: newServiceId,
-          employee_id: newEmployeeId,
-          appointment_date: isoDateTime
-        })
-        .eq('id', bookingId);
-
-      if (error) {
-        console.error('Error updating booking:', error);
-        showBookingsMessage('Error updating booking. Please try again.', 'danger');
-        return;
-      }
-
-      // Hide the modal
-      const modal = bootstrap.Modal.getInstance(document.getElementById('editBookingModal'));
-      if (modal) {
-        modal.hide();
-      }
-
-      // Show success message
-      showBookingsMessage('Booking updated successfully!', 'success');
-
-      // Reload bookings
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session && session.user) {
-        await loadMyBookings(session.user.id);
-      }
-    } catch (error) {
-      console.error('Unexpected error updating booking:', error);
-      showBookingsMessage('An unexpected error occurred.', 'danger');
-    }
-  });
-}
 
 /**
  * Setup event delegation for cancel buttons
  * Handles clicks on dynamically generated Cancel buttons
+ * Soft-deletes bookings by setting status to 'cancelled' and tracking the canceller
  */
 function setupCancelButtonDelegation() {
   document.addEventListener('click', async (e) => {
@@ -393,22 +224,22 @@ function setupCancelButtonDelegation() {
       
       if (!bookingId) return;
 
-      // Ask for confirmation before permanently deleting
-      if (confirm("Are you sure you want to permanently delete this appointment? This action cannot be undone.")) {
+      // Ask for confirmation before cancelling
+      if (confirm("Are you sure you want to cancel this appointment?")) {
         const originalText = cancelBtn.innerHTML;
-        cancelBtn.innerHTML = "Deleting...";
+        cancelBtn.innerHTML = "Cancelling...";
         cancelBtn.disabled = true;
 
         try {
-          // Completely delete the record from the Supabase table
+          // Soft-delete the record by updating status and tracking the canceller
           const { error } = await supabase
             .from('bookings')
-            .delete()
+            .update({ status: 'cancelled', cancelled_by: 'client' })
             .eq('id', bookingId);
 
           if (error) throw error;
 
-          alert("Your appointment has been successfully deleted.");
+          alert("Your appointment has been successfully cancelled.");
           
           // Reload bookings
           const { data: { session } } = await supabase.auth.getSession();
@@ -417,8 +248,8 @@ function setupCancelButtonDelegation() {
           }
           
         } catch (error) {
-          console.error("Error deleting booking:", error);
-          alert("Failed to delete: " + error.message);
+          console.error("Error cancelling booking:", error);
+          alert("Failed to cancel: " + error.message);
           cancelBtn.innerHTML = originalText;
           cancelBtn.disabled = false;
         }

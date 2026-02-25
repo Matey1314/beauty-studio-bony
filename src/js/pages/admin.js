@@ -338,7 +338,7 @@ async function loadSchedule(session) {
         // Build query (Trying standard foreign key for the client)
         let query = supabase
             .from('bookings')
-            .select('id, appointment_date, status, services(name), client:profiles!bookings_client_id_fkey(full_name, phone)')
+            .select('id, appointment_date, status, cancelled_by, services(name), client:profiles!bookings_client_id_fkey(full_name, phone)')
             .order('appointment_date', { ascending: true });
 
         // Filter for staff
@@ -379,6 +379,19 @@ async function loadSchedule(session) {
             const serviceName = booking.services?.name || 'N/A';
             const status = booking.status || 'pending';
 
+            // Generate status badge with cancellation info
+            let statusBadge = '';
+            if (booking.status === 'confirmed') {
+                statusBadge = '<span class="badge bg-success">Confirmed</span>';
+            } else if (booking.status === 'completed') {
+                statusBadge = '<span class="badge bg-secondary">Completed</span>';
+            } else if (booking.status === 'cancelled') {
+                const canceller = booking.cancelled_by === 'client' ? '(by Client)' : '(by Salon)';
+                statusBadge = `<span class="badge bg-danger">Cancelled ${canceller}</span>`;
+            } else {
+                statusBadge = `<span class="badge bg-warning text-dark">${booking.status}</span>`;
+            }
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${formattedDate}</td>
@@ -386,38 +399,78 @@ async function loadSchedule(session) {
                 <td>${clientPhone}</td>
                 <td>${serviceName}</td>
                 <td>
-                    <select class="form-select form-select-sm status-select" data-id="${booking.id}">
-                        <option value="pending" ${status === 'pending' ? 'selected' : ''}>Pending</option>
-                        <option value="confirmed" ${status === 'confirmed' ? 'selected' : ''}>Confirmed</option>
-                        <option value="completed" ${status === 'completed' ? 'selected' : ''}>Completed</option>
-                        <option value="cancelled" ${status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
-                    </select>
+                    ${statusBadge}
                 </td>
                 <td>
-                    <button class="btn btn-sm btn-success save-status-btn" data-id="${booking.id}">Save</button>
+                    <button class="btn btn-sm btn-success complete-btn" data-id="${booking.id}">Complete</button>
+                    <button class="btn btn-sm btn-danger admin-cancel-btn" data-id="${booking.id}">Cancel</button>
                 </td>
             `;
             tbody.appendChild(tr);
         });
 
-        // Attach event listeners
-        document.querySelectorAll('.save-status-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const bookingId = e.target.getAttribute('data-id');
-                const selectEl = document.querySelector(`.status-select[data-id="${bookingId}"]`);
+        // Attach event listeners for Complete button
+        document.addEventListener('click', async (e) => {
+            const completeBtn = e.target.closest('.complete-btn');
+            
+            if (completeBtn) {
+                const bookingId = completeBtn.getAttribute('data-id');
                 
-                if (selectEl) {
-                    const newStatus = selectEl.value;
-                    const { error: updateError } = await supabase.from('bookings').update({ status: newStatus }).eq('id', bookingId);
+                if (confirm('Mark this appointment as completed?')) {
+                    const originalText = completeBtn.innerHTML;
+                    completeBtn.innerHTML = 'Completing...';
+                    completeBtn.disabled = true;
                     
-                    if (updateError) {
-                        alert('Error updating status!');
-                        console.error(updateError);
-                    } else {
-                        alert('Status updated successfully!');
+                    try {
+                        const { error } = await supabase
+                            .from('bookings')
+                            .update({ status: 'completed' })
+                            .eq('id', bookingId);
+                        
+                        if (error) throw error;
+                        
+                        alert('Appointment marked as completed!');
+                        await loadSchedule({ user: { id: '' } });
+                    } catch (error) {
+                        console.error('Error completing appointment:', error);
+                        alert('Failed to complete appointment: ' + error.message);
+                        completeBtn.innerHTML = originalText;
+                        completeBtn.disabled = false;
                     }
                 }
-            });
+            }
+        });
+
+        // Attach event listeners for Admin Cancel button
+        document.addEventListener('click', async (e) => {
+            const adminCancelBtn = e.target.closest('.admin-cancel-btn');
+            
+            if (adminCancelBtn) {
+                const bookingId = adminCancelBtn.getAttribute('data-id');
+                
+                if (confirm('Cancel this appointment?')) {
+                    const originalText = adminCancelBtn.innerHTML;
+                    adminCancelBtn.innerHTML = 'Cancelling...';
+                    adminCancelBtn.disabled = true;
+                    
+                    try {
+                        const { error } = await supabase
+                            .from('bookings')
+                            .update({ status: 'cancelled', cancelled_by: 'admin' })
+                            .eq('id', bookingId);
+                        
+                        if (error) throw error;
+                        
+                        alert('Appointment cancelled!');
+                        await loadSchedule({ user: { id: '' } });
+                    } catch (error) {
+                        console.error('Error cancelling appointment:', error);
+                        alert('Failed to cancel appointment: ' + error.message);
+                        adminCancelBtn.innerHTML = originalText;
+                        adminCancelBtn.disabled = false;
+                    }
+                }
+            }
         });
 
     } catch (err) {
