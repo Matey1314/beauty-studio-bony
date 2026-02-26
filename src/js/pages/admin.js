@@ -1,4 +1,4 @@
-import { supabase } from '../services/supabaseClient.js';
+﻿import { supabase } from '../services/supabaseClient.js';
 
 /**
  * Initialize admin dashboard
@@ -31,6 +31,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const clientId = document.getElementById('dossierClientId').value;
       const notes = document.getElementById('dossierNotes').value;
+
+      if (!clientId || clientId === 'undefined') {
+        alert("Грешка: Невалидно ID на клиент. Моля, презаредете страницата.");
+        btn.innerText = originalText;
+        btn.disabled = false;
+        return;
+      }
 
       try {
         // Upsert logic (Insert if doesn't exist, Update if it does)
@@ -317,21 +324,28 @@ window.loadFinancialDashboard = async (selectedMonthStr) => {
  * Open the dossier modal for a specific client
  */
 window.openDossier = async (clientId, clientName) => {
-    if (!clientId) {
-        alert("Грешка: Липсва ID на клиента за тази резервация.");
-        return;
+    // 1. Strict validation
+    if (!clientId || clientId === 'undefined' || clientId === 'null' || clientId === '') {
+        alert("Системна грешка: Липсва уникално ID на клиента за тази резервация.");
+        const notesArea = document.getElementById('dossierNotes');
+        if (notesArea) notesArea.value = 'Грешка: Липсва ID на клиента.';
+        return; // Stop execution so Supabase doesn't throw a 400 error
     }
-    
+
+    // 2. Setup Modal
     document.getElementById('dossierClientId').value = clientId;
     document.getElementById('dossierClientName').innerText = clientName;
     const notesArea = document.getElementById('dossierNotes');
     notesArea.value = 'Зареждане...';
     
-    // Show the modal
-    const dossierModal = new bootstrap.Modal(document.getElementById('dossierModal'));
+    const modalEl = document.getElementById('dossierModal');
+    let dossierModal = bootstrap.Modal.getInstance(modalEl);
+    if (!dossierModal) {
+        dossierModal = new bootstrap.Modal(modalEl);
+    }
     dossierModal.show();
 
-    // Fetch existing notes
+    // 3. Fetch data
     try {
         const { data, error } = await supabase
             .from('client_notes')
@@ -584,34 +598,58 @@ async function loadSchedule(session) {
         const { data: profile } = await supabase.from('profiles').select('role').eq('id', currentSession.user.id).single();
         const userRole = profile?.role;
 
-        // Build query with specialist and service joins
-        let query = supabase
+        // Fetch bookings separately to avoid relational join issues
+        let bookingsQuery = supabase
             .from('bookings')
-            .select(`
-                id, 
-                appointment_date, 
-                status, 
-                cancelled_by,
-                rating,
-                feedback_notes,
-                services!bookings_service_id_fkey(name),
-                specialist:profiles!bookings_employee_id_fkey(full_name),
-                client:client_id(*)
-            `)
+            .select('id, appointment_date, status, cancelled_by, rating, feedback_notes, client_id, employee_id, service_id')
             .order('appointment_date', { ascending: true });
 
         // Filter for staff
         if (userRole === 'staff') {
-            query = query.eq('employee_id', currentSession.user.id);
+            bookingsQuery = bookingsQuery.eq('employee_id', currentSession.user.id);
         }
 
-        const { data: schedule, error } = await query;
-        console.log('Fetched schedule array for render:', schedule);
+        const { data: bookingsData, error: bookingsError } = await bookingsQuery;
+        console.log('Fetched bookings data:', bookingsData);
 
-        if (error) {
-            console.error('Error fetching schedule:', error);
+        if (bookingsError) {
+            console.error('Error fetching bookings:', bookingsError);
             return;
         }
+
+        // Fetch profiles to get specialist names
+        const { data: profilesData, error: profilesError } = await supabase
+            .from('profiles')
+            .select('id, full_name, phone');
+
+        if (profilesError) {
+            console.error('Error fetching profiles:', profilesError);
+            return;
+        }
+
+        // Fetch services to get service names
+        const { data: servicesData, error: servicesError } = await supabase
+            .from('services')
+            .select('id, name');
+
+        if (servicesError) {
+            console.error('Error fetching services:', servicesError);
+            return;
+        }
+
+        // Manually map related data to bookings
+        const schedule = (bookingsData || []).map(booking => {
+            const specialist = profilesData?.find(p => p.id === booking.employee_id);
+            const service = servicesData?.find(s => s.id === booking.service_id);
+            const client = profilesData?.find(p => p.id === booking.client_id);
+
+            return {
+                ...booking,
+                specialist: specialist,
+                services: service,
+                client: client
+            };
+        });
 
         // Transform schedule data to match expected format
         const bookings = (schedule || []).map(booking => {
@@ -627,7 +665,8 @@ async function loadSchedule(session) {
                 service: booking.services?.name || 'Unknown Service',
                 user_email: booking.client?.email || 'Unknown',
                 user_id: booking.client?.id || '',
-                client_name: booking.client?.full_name || 'Клиент',
+                client_name: booking.client?.full_name || 'Неизвестен клиент',
+                client_phone: booking.client?.phone || 'Няма телефон',
                 status: booking.status || 'pending',
                 cancelled_by: booking.cancelled_by,
                 rating: booking.rating,
@@ -692,12 +731,12 @@ async function loadSchedule(session) {
                         actionButtons = `
                             <button class="btn btn-sm btn-success complete-btn me-1" data-id="${booking.id}">Приключи</button>
                             <button class="btn btn-sm btn-danger admin-cancel-btn me-1" data-id="${booking.id}">Откажи</button>
-                            <button class="btn btn-sm btn-outline-dark rounded-pill" onclick="openDossier('${booking.user_id}', '${booking.client_name}')">📝 Досие</button>
+                            <button class="btn btn-sm btn-outline-dark rounded-pill mt-2 me-1" onclick="openDossier('${booking.user_id || ''}', '${booking.client_name}')"><i class="bi bi-file-earmark-text me-1"></i>Досие</button>
                         `;
                     } else {
                         actionButtons = `
                             <span class="text-muted small me-1">Няма действия</span>
-                            <button class="btn btn-sm btn-outline-dark rounded-pill" onclick="openDossier('${booking.user_id}', '${booking.client_name}')">📝 Досие</button>
+                            <button class="btn btn-sm btn-outline-dark rounded-pill mt-2 me-1" onclick="openDossier('${booking.user_id || ''}', '${booking.client_name}')"><i class="bi bi-file-earmark-text me-1"></i>Досие</button>
                         `;
                     }
 
@@ -709,11 +748,15 @@ async function loadSchedule(session) {
                     if (userRole === 'admin' && booking.rating) {
                         adminFeedbackHTML = `
                             <div class="mt-2 p-2 bg-light rounded small border-start border-warning border-3">
-                                <strong>Обратна връзка:</strong> ⭐ ${booking.rating}/5 <br>
+                                <strong>Обратна връзка:</strong> <i class="bi bi-star-fill small me-1"></i> ${booking.rating}/5 <br>
                                 <span class="text-muted">"${booking.feedback_notes || 'Няма коментар'}"</span>
                             </div>
                         `;
                     }
+
+                    // Extract client details
+                    const clientName = booking.client_name || 'Неизвестен клиент';
+                    const clientPhone = booking.client_phone || 'Няма телефон';
 
                     return `
                         <tr>
@@ -722,7 +765,10 @@ async function loadSchedule(session) {
                                 ${booking.service}
                                 ${adminFeedbackHTML}
                             </td>
-                            <td>${booking.user_email || 'Неизвестен'}</td>
+                            <td>
+                                <div class="fw-bold">${clientName}</div>
+                                <div class="small text-muted"><i class="bi bi-telephone-fill"></i> ${clientPhone}</div>
+                            </td>
                             <td>${statusBadge}</td>
                             <td>${actionButtons}</td>
                         </tr>
@@ -780,9 +826,9 @@ async function loadSchedule(session) {
                 if (ratedBookings.length > 0) {
                     const sumRatings = ratedBookings.reduce((sum, curr) => sum + Number(curr.rating), 0);
                     const avgRating = (sumRatings / ratedBookings.length).toFixed(1); 
-                    averageRatingHtml = `<span class="badge bg-warning text-dark ms-2 fs-6 shadow-sm">⭐ ${avgRating}/5 <small class="text-muted fw-normal">(${ratedBookings.length} мнения)</small></span>`;
+                    averageRatingHtml = `<span class="badge bg-light text-dark border shadow-sm ms-2 fs-6 d-inline-flex align-items-center"><i class="bi bi-star-fill text-warning me-1"></i> ${avgRating}/5 <small class="text-muted fw-normal ms-1">(${ratedBookings.length})</small></span>`;
                 } else {
-                    averageRatingHtml = `<span class="badge bg-light text-secondary ms-2 border">Няма оценки</span>`;
+                    averageRatingHtml = `<span class="badge bg-light text-secondary border ms-2 small">Няма оценки</span>`;
                 }
             }
 
@@ -800,7 +846,7 @@ async function loadSchedule(session) {
                 <div class="accordion-item border-0 border-bottom">
                     <h2 class="accordion-header" id="${headingId}">
                         <button class="accordion-button ${isFirst ? '' : 'collapsed'} fw-bold fs-5 bg-light text-dark" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="${isFirst ? 'true' : 'false'}" aria-controls="${collapseId}">
-                            💇‍♀️ ${specialist} <span class="badge bg-primary ms-3 rounded-pill">${todayBookingsCount} часа за днес</span>${averageRatingHtml}
+                            <i class="bi bi-scissors me-2"></i> ${specialist} <span class="badge bg-primary ms-3 rounded-pill">${todayBookingsCount} часа за днес</span>${averageRatingHtml}
                         </button>
                     </h2>
                     <div id="${collapseId}" class="accordion-collapse collapse ${isFirst ? 'show' : ''}" aria-labelledby="${headingId}" data-bs-parent="#adminScheduleAccordion">
@@ -820,29 +866,39 @@ async function loadSchedule(session) {
             if (completeBtn) {
                 const bookingId = completeBtn.getAttribute('data-id');
                 
-                const action = 'complete';
-                if (action === 'complete' && confirm('Маркирай од мата авторитет като завършена?')) {
-                    const originalText = completeBtn.innerHTML;
-                    completeBtn.innerHTML = 'Completing...';
-                    completeBtn.disabled = true;
-                    
-                    try {
-                        const { error } = await supabase
-                            .from('bookings')
-                            .update({ status: 'completed' })
-                            .eq('id', bookingId);
+                Swal.fire({
+                    title: 'Процедурата е завршена?',
+                    text: 'Сигурни ли сте, че искате да приключите този час?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#198754',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Да, завршена',
+                    cancelButtonText: 'Назад'
+                }).then(async (result) => {
+                    if (result.isConfirmed) {
+                        const originalText = completeBtn.innerHTML;
+                        completeBtn.innerHTML = 'Completing...';
+                        completeBtn.disabled = true;
                         
-                        if (error) throw error;
-                        
-                        alert('Резервация бе отбелязана като приключена!');
-                        await loadSchedule({ user: { id: '' } });
-                    } catch (error) {
-                        console.error('Error completing appointment:', error);
-                        alert('Неуспешно отбелязване: ' + error.message);
-                        completeBtn.innerHTML = originalText;
-                        completeBtn.disabled = false;
+                        try {
+                            const { error } = await supabase
+                                .from('bookings')
+                                .update({ status: 'completed' })
+                                .eq('id', bookingId);
+                            
+                            if (error) throw error;
+                            
+                            Swal.fire('Готово!', 'Часът е успешно приключен.', 'success');
+                            await loadSchedule({ user: { id: '' } });
+                        } catch (error) {
+                            console.error('Error completing appointment:', error);
+                            Swal.fire('Грешка', 'Неуспешно отбелязване: ' + error.message, 'error');
+                            completeBtn.innerHTML = originalText;
+                            completeBtn.disabled = false;
+                        }
                     }
-                }
+                });
             }
         });
 
@@ -853,28 +909,39 @@ async function loadSchedule(session) {
             if (adminCancelBtn) {
                 const bookingId = adminCancelBtn.getAttribute('data-id');
                 
-                if (confirm('Откажи тази резервация?')) {
-                    const originalText = adminCancelBtn.innerHTML;
-                    adminCancelBtn.innerHTML = 'Отказване...';
-                    adminCancelBtn.disabled = true;
-                    
-                    try {
-                        const { error } = await supabase
-                            .from('bookings')
-                            .update({ status: 'cancelled', cancelled_by: 'admin' })
-                            .eq('id', bookingId);
+                Swal.fire({
+                    title: 'Отказване на часа?',
+                    text: 'Сигурни ли сте, че искате да откажете тази резервация?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545', // Danger red
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Да, откажи',
+                    cancelButtonText: 'Назад'
+                }).then(async (result) => {
+                    if (result.isConfirmed) {
+                        const originalText = adminCancelBtn.innerHTML;
+                        adminCancelBtn.innerHTML = 'Отказване...';
+                        adminCancelBtn.disabled = true;
                         
-                        if (error) throw error;
-                        
-                        alert('Резервациюта бе отказана!');
-                        await loadSchedule({ user: { id: '' } });
-                    } catch (error) {
-                        console.error('Error cancelling appointment:', error);
-                        alert('Неуспешно отказване: ' + error.message);
-                        adminCancelBtn.innerHTML = originalText;
-                        adminCancelBtn.disabled = false;
+                        try {
+                            const { error } = await supabase
+                                .from('bookings')
+                                .update({ status: 'cancelled', cancelled_by: 'admin' })
+                                .eq('id', bookingId);
+                            
+                            if (error) throw error;
+                            
+                            Swal.fire('Отказан!', 'Резервацията беше успешно отказана.', 'success');
+                            await loadSchedule({ user: { id: '' } });
+                        } catch (error) {
+                            console.error('Error cancelling appointment:', error);
+                            Swal.fire('Грешка', 'Неуспешно отказване: ' + error.message, 'error');
+                            adminCancelBtn.innerHTML = originalText;
+                            adminCancelBtn.disabled = false;
+                        }
                     }
-                }
+                });
             }
         });
 
@@ -1011,29 +1078,38 @@ function setupServiceFormListener() {
  * @param {string} serviceId - The service ID to delete
  */
 async function deleteService(serviceId) {
-  if (!confirm('Are you sure you want to delete this service?')) {
-    return;
-  }
+  Swal.fire({
+    title: 'Delete Service?',
+    text: 'Are you sure you want to delete this service?',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#dc3545',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'Yes, delete it',
+    cancelButtonText: 'Cancel'
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      try {
+        const { error } = await supabase
+          .from('services')
+          .delete()
+          .eq('id', serviceId);
 
-  try {
-    const { error } = await supabase
-      .from('services')
-      .delete()
-      .eq('id', serviceId);
+        if (error) {
+          console.error('Error deleting service:', error);
+          Swal.fire('Error', 'Failed to delete service', 'error');
+          return;
+        }
 
-    if (error) {
-      console.error('Error deleting service:', error);
-      alert('Failed to delete service');
-      return;
+        // Reload services
+        await loadServices();
+        Swal.fire('Deleted!', 'Service deleted successfully!', 'success');
+      } catch (error) {
+        console.error('Unexpected error deleting service:', error);
+        Swal.fire('Error', 'An error occurred while deleting the service', 'error');
+      }
     }
-
-    // Reload services
-    await loadServices();
-    alert('Service deleted successfully!');
-  } catch (error) {
-    console.error('Unexpected error deleting service:', error);
-    alert('An error occurred while deleting the service');
-  }
+  });
 }
 
 /**
@@ -1367,43 +1443,52 @@ function setupGalleryDeleteListener() {
     const id = deleteBtn.dataset.id;
     const imageUrl = deleteBtn.dataset.url;
 
-    if (!confirm('Are you sure you want to delete this image?')) {
-      return;
-    }
+    Swal.fire({
+      title: 'Delete Image?',
+      text: 'Are you sure you want to delete this image?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc3545',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Yes, delete it',
+      cancelButtonText: 'Cancel'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          // Extract filename from URL
+          const urlParts = imageUrl.split('/');
+          const fileName = urlParts[urlParts.length - 1];
 
-    try {
-      // Extract filename from URL
-      const urlParts = imageUrl.split('/');
-      const fileName = urlParts[urlParts.length - 1];
+          // Delete from storage
+          const { error: storageError } = await supabase.storage
+            .from('gallery')
+            .remove([fileName]);
 
-      // Delete from storage
-      const { error: storageError } = await supabase.storage
-        .from('gallery')
-        .remove([fileName]);
+          if (storageError) {
+            console.error('Storage delete error:', storageError);
+            // Continue with database deletion even if storage delete fails
+          }
 
-      if (storageError) {
-        console.error('Storage delete error:', storageError);
-        // Continue with database deletion even if storage delete fails
+          // Delete from database
+          const { error: dbError } = await supabase
+            .from('gallery')
+            .delete()
+            .eq('id', id);
+
+          if (dbError) {
+            console.error('Database delete error:', dbError);
+            Swal.fire('Error', 'Failed to delete gallery record', 'error');
+            return;
+          }
+
+          Swal.fire('Deleted!', 'Image deleted successfully!', 'success');
+          await loadGallery();
+        } catch (error) {
+          console.error('Error deleting image:', error);
+          Swal.fire('Error', 'Error: ' + error.message, 'error');
+        }
       }
-
-      // Delete from database
-      const { error: dbError } = await supabase
-        .from('gallery')
-        .delete()
-        .eq('id', id);
-
-      if (dbError) {
-        console.error('Database delete error:', dbError);
-        alert('Failed to delete gallery record');
-        return;
-      }
-
-      alert('Image deleted successfully!');
-      await loadGallery();
-    } catch (error) {
-      console.error('Error deleting image:', error);
-      alert('Error: ' + error.message);
-    }
+    });
   });
 }
 
@@ -1547,43 +1632,53 @@ function setupProductDeleteListener() {
     const id = deleteBtn.dataset.id;
     const imageUrl = deleteBtn.dataset.url;
 
-    if (!confirm('Are you sure you want to delete this product?')) {
-      return;
-    }
+    Swal.fire({
+      title: 'Delete Product?',
+      text: 'Are you sure you want to delete this product?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc3545',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Yes, delete it',
+      cancelButtonText: 'Cancel'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          // Extract filename from URL
+          const urlParts = imageUrl.split('/');
+          const fileName = urlParts[urlParts.length - 1];
 
-    try {
-      // Extract filename from URL
-      const urlParts = imageUrl.split('/');
-      const fileName = urlParts[urlParts.length - 1];
+          // Delete from storage
+          const { error: storageError } = await supabase.storage
+            .from('products')
+            .remove([fileName]);
 
-      // Delete from storage
-      const { error: storageError } = await supabase.storage
-        .from('products')
-        .remove([fileName]);
+          if (storageError) {
+            console.error('Storage delete error:', storageError);
+            // Continue with database deletion even if storage delete fails
+          }
 
-      if (storageError) {
-        console.error('Storage delete error:', storageError);
-        // Continue with database deletion even if storage delete fails
+          // Delete from database
+          const { error: dbError } = await supabase
+            .from('products')
+            .delete()
+            .eq('id', id);
+
+          if (dbError) {
+            console.error('Database delete error:', dbError);
+            Swal.fire('Error', 'Failed to delete product record', 'error');
+            return;
+          }
+
+          Swal.fire('Deleted!', 'Product deleted successfully!', 'success');
+          await loadProducts();
+        } catch (error) {
+          console.error('Error deleting product:', error);
+          Swal.fire('Error', 'Error: ' + error.message, 'error');
+        }
       }
-
-      // Delete from database
-      const { error: dbError } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', id);
-
-      if (dbError) {
-        console.error('Database delete error:', dbError);
-        alert('Failed to delete product record');
-        return;
-      }
-
-      alert('Product deleted successfully!');
-      await loadProducts();
-    } catch (error) {
-      console.error('Error deleting product:', error);
-      alert('Error: ' + error.message);
-    }
+    });
   });
 }
+
 

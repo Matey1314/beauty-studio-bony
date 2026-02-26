@@ -8,6 +8,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
     <!-- Navigation Bar -->
@@ -46,14 +48,14 @@
     <main class="container mt-4">
         <!-- Hero Section -->
         <div class="p-5 mb-5 text-white rounded-4 shadow-lg text-center position-relative overflow-hidden" style="background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://images.unsplash.com/photo-1560066984-138dadb4c035?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80') center/cover no-repeat; min-height: 400px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-            <h1 class="display-4 fw-bold mb-3">Добре дошли в Salon Bony</h1>
+            <h1 class="display-4 fw-bold mb-3">Добре дошли в Beauty Studio Bony</h1>
             <p class="lead mb-4 fs-4">Преживейте премиум услуги и експертна помощ.</p>
             <a href="booking.html" class="btn btn-primary btn-lg rounded-pill px-5 py-3 fs-5 fw-bold shadow">Запази час</a>
         </div>
 
         <!-- Services & Prices Trigger Banner -->
         <div class="text-center mb-5 bg-white p-5 rounded-4 shadow-sm border-0" style="transition: transform 0.3s ease, box-shadow 0.3s ease;" onmouseover="this.style.transform='translateY(-5px)'; this.classList.replace('shadow-sm', 'shadow-lg');" onmouseout="this.style.transform='translateY(0)'; this.classList.replace('shadow-lg', 'shadow-sm');">
-            <div class="display-4 mb-3" style="color: #0d6efd;"><i class="bi bi-tags"></i></div>
+            <i class="bi bi-tags text-primary display-4 mb-3 d-block"></i>
             <h2 class="fw-bold text-dark">Нашите услуги и цени</h2>
             <p class="text-muted mb-4">Разгледайте нашия широк спектър на професионални козметични услуги.</p>
             <button class="btn btn-dark btn-lg rounded-pill px-5 shadow" data-bs-toggle="modal" data-bs-target="#servicesModal">
@@ -65,7 +67,7 @@
         <div class="row text-center mt-5 pt-4 mb-5">
             <div class="col-md-4 mb-4">
                 <div class="p-4 bg-white rounded-4 shadow-sm h-100" style="transition: transform 0.3s ease, box-shadow 0.3s ease; cursor: pointer;" onmouseover="this.style.transform='translateY(-5px)'; this.classList.replace('shadow-sm', 'shadow-lg');" onmouseout="this.style.transform='translateY(0)'; this.classList.replace('shadow-lg', 'shadow-sm');" data-bs-toggle="modal" data-bs-target="#productsModal">
-                    <div class="display-4 mb-3">✨</div>
+                    <i class="bi bi-gem text-warning display-4 mb-3 d-block"></i>
                     <h4 class="fw-bold text-dark">Премиум продукти</h4>
                     <p class="text-muted">Използваме само висококачествени продукти за кожата и косата ви.</p>
                 </div>
@@ -73,8 +75,8 @@
             
             <div class="col-md-4 mb-4">
                 <div class="p-4 bg-white rounded-4 shadow-sm h-100" style="transition: transform 0.3s ease, box-shadow 0.3s ease; cursor: pointer;" onmouseover="this.style.transform='translateY(-5px)'; this.classList.replace('shadow-sm', 'shadow-lg');" onmouseout="this.style.transform='translateY(0)'; this.classList.replace('shadow-lg', 'shadow-sm');" data-bs-toggle="modal" data-bs-target="#teamModal">
-                    <div class="display-4 mb-3">👩‍🎨</div>
-                    <h4 class="fw-bold text-dark">Експертни специалисти</h4>
+                    <i class="bi bi-people text-info display-4 mb-3 d-block"></i>
+                    <h4 class="fw-bold text-dark">Нашият екип</h4>
                     <p class="text-muted">Нашият екип се състои от добре обучени и опитни професионалисти.</p>
                 </div>
             </div>
@@ -159,7 +161,7 @@
         <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
             <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden">
                 <div class="modal-header bg-dark text-white border-0 p-4">
-                    <h3 class="modal-title fw-bold mb-0">Price List</h3>
+                    <h3 class="modal-title fw-bold mb-0">Ценови лист</h3>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-4 p-md-5 bg-light">
@@ -175,12 +177,12 @@
         <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
             <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden">
                 <div class="modal-header bg-dark text-white border-0 p-4">
-                    <h3 class="modal-title fw-bold mb-0">Нашите премиум продукти</h3>
+                    <h3 class="modal-title fw-bold mb-0">Продуктите който използваме</h3>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-4 p-md-5 bg-light">
                     <div class="row g-4" id="productsModalList">
-                        <div class="text-center text-muted w-100">Loading products...</div>
+                        <div class="text-center text-muted w-100">Зареждане на продукти...</div>
                     </div>
                 </div>
             </div>

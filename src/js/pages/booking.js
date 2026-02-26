@@ -312,7 +312,7 @@ async function submitWizardBooking() {
     // Get current user
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      alert("Моля, влезте в профила си, за да запазите час.");
+      Swal.fire('Внимание', 'Моля, влезте в профила си, за да запазите час.', 'warning');
       return;
     }
 
@@ -324,8 +324,9 @@ async function submitWizardBooking() {
       .single();
 
     if (profileError || !profileData || !profileData.phone || profileData.phone.trim() === '') {
-      alert("Моля, въведете своя телефонен номер в Профила си преди да запазите час.");
-      window.location.href = 'profile.html?new=true';
+      Swal.fire('Внимание', 'Моля, въведете своя телефонен номер в Профила си преди да запазите час.', 'warning').then(() => {
+        window.location.href = 'profile.html?new=true';
+      });
       return;
     }
 
@@ -337,7 +338,7 @@ async function submitWizardBooking() {
 
     // Validate date and time selection
     if (!window.bookingState.date || !window.bookingState.time) {
-      alert("Моля, изберете дата и час за вашата резервация!");
+      Swal.fire('Внимание', 'Моля, изберете час преди да продължите.', 'warning');
       return;
     }
 
@@ -381,26 +382,24 @@ async function submitWizardBooking() {
       return;
     }
 
-    showBookingMessage('Резервацията е потвърдена! Пренасочване на профила...', 'success');
+    Swal.fire('Готово!', 'Вашият час е успешно запазен! Очакваме ви.', 'success').then(() => {
+      // Reset state
+      window.bookingState = {
+        specialistId: '',
+        specialistName: '',
+        service: '',
+        serviceId: '',
+        servicePrice: 0,
+        date: '',
+        time: ''
+      };
 
-    // Reset state
-    window.bookingState = {
-      specialistId: '',
-      specialistName: '',
-      service: '',
-      serviceId: '',
-      servicePrice: 0,
-      date: '',
-      time: ''
-    };
+      // Reset form
+      document.getElementById('wizardDate').value = '';
 
-    // Reset form
-    document.getElementById('wizardDate').value = '';
-
-    // Redirect after 2 seconds
-    setTimeout(() => {
+      // Redirect to profile
       window.location.href = 'profile.html';
-    }, 2000);
+    });
   } catch (error) {
     console.error('Unexpected error submitting booking:', error);
     showBookingMessage(`Възникна грешка: ${error.message}`, 'danger');

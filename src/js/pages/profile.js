@@ -141,7 +141,7 @@ function setupFeedbackFormSubmission() {
     const notes = document.getElementById('feedbackNotes').value.trim();
 
     if (!bookingId || !rating || rating < 1 || rating > 5) {
-      alert('Моля, предоставете валидна оценка (1-5).');
+      Swal.fire('Грешка!', 'Моля, предоставете валидна оценка (1-5).', 'error');
       return;
     }
 
@@ -172,7 +172,7 @@ function setupFeedbackFormSubmission() {
       }
     } catch (error) {
       console.error('Error submitting feedback:', error);
-      alert('Неуспешно изпращане на отзив: ' + error.message);
+      Swal.fire('Грешка!', 'Неуспешно изпращане на отзив: ' + error.message, 'error');
     } finally {
       submitBtn.innerHTML = 'Изпрати оценка';
       submitBtn.disabled = false;
@@ -375,35 +375,46 @@ function setupCancelButtonDelegation() {
       if (!bookingId) return;
 
       // Ask for confirmation before cancelling
-      if (confirm("Are you sure you want to cancel this appointment?")) {
-        const originalText = cancelBtn.innerHTML;
-        cancelBtn.innerHTML = "Отказване...";
-        cancelBtn.disabled = true;
+      Swal.fire({
+        title: 'Отказване на часа?',
+        text: 'Сигурни ли сте, че искате да откажете тази резервация?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Да, откажи',
+        cancelButtonText: 'Назад'
+      }).then(async (result) => {
+        if (result.isConfirmed) {
+          const originalText = cancelBtn.innerHTML;
+          cancelBtn.innerHTML = "Отказване...";
+          cancelBtn.disabled = true;
 
-        try {
-          // Soft-delete the record by updating status and tracking the canceller
-          const { error } = await supabase
-            .from('bookings')
-            .update({ status: 'cancelled', cancelled_by: 'client' })
-            .eq('id', bookingId);
+          try {
+            // Soft-delete the record by updating status and tracking the canceller
+            const { error } = await supabase
+              .from('bookings')
+              .update({ status: 'cancelled', cancelled_by: 'client' })
+              .eq('id', bookingId);
 
-          if (error) throw error;
+            if (error) throw error;
 
-          alert("Your appointment has been successfully cancelled.");
-          
-          // Reload bookings
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session && session.user) {
-            await loadMyBookings(session.user.id);
+            Swal.fire('Отказан!', 'Вашият час беше успешно отказан.', 'success');
+            
+            // Reload bookings
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session && session.user) {
+              await loadMyBookings(session.user.id);
+            }
+            
+          } catch (error) {
+            console.error("Error cancelling booking:", error);
+            Swal.fire('Грешка!', 'Неуспешно отказване: ' + error.message, 'error');
+            cancelBtn.innerHTML = originalText;
+            cancelBtn.disabled = false;
           }
-          
-        } catch (error) {
-          console.error("Error cancelling booking:", error);
-          alert("Неуспешно отказване: " + error.message);
-          cancelBtn.innerHTML = originalText;
-          cancelBtn.disabled = false;
         }
-      }
+      });
     }
   });
 }

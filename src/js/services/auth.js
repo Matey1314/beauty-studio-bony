@@ -43,19 +43,18 @@ async function handleRegister(e) {
         });
 
         if (error) {
-            displayMessage(`Registration Error: ${error.message}`, 'danger');
+            Swal.fire('Грешка!', `Грешка при регистрация: ${error.message}`, 'error');
             return;
         }
 
-        displayMessage('Registration successful! Redirecting to your profile...', 'success');
         registerForm.reset();
         
-        // Redirect to profile page with new=true parameter after successful registration
-        setTimeout(() => {
+        // Show success modal and redirect to profile after dismissal
+        Swal.fire('Успех!', 'Регистрацията беше успешна! Пренасочване на профила...', 'success').then(() => {
             window.location.href = 'profile.html?new=true';
-        }, 1000);
+        });
     } catch (error) {
-        displayMessage(`An unexpected error occurred: ${error.message}`, 'danger');
+        Swal.fire('Грешка!', `Възникна неочаквана грешка: ${error.message}`, 'error');
     }
 }
 
@@ -79,19 +78,18 @@ async function handleLogin(e) {
         });
 
         if (error) {
-            displayMessage(`Login Error: ${error.message}`, 'danger');
+            Swal.fire('Грешка!', `Грешка при вход: ${error.message}`, 'error');
             return;
         }
 
-        displayMessage('Login successful! Redirecting...', 'success');
         loginForm.reset();
 
-        // Redirect to index.html after successful login
-        setTimeout(() => {
+        // Show success modal and redirect after dismissal
+        Swal.fire('Успех!', 'Успешен вход! Пренасочване...', 'success').then(() => {
             window.location.href = 'index.html';
-        }, 1000);
+        });
     } catch (error) {
-        displayMessage(`An unexpected error occurred: ${error.message}`, 'danger');
+        Swal.fire('Грешка!', `Възникна неочаквана грешка: ${error.message}`, 'error');
     }
 }
 
