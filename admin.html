@@ -55,12 +55,16 @@
         <p>Управление на салона и графика с резервации.</p>
 
         <!-- Manage Services Section (Admin Only) -->
-        <div id="adminServicesSection" class="card shadow-lg border-0 rounded-4 mb-5" style="display: none;">
-            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#collapseServices" role="button" aria-expanded="true" aria-controls="collapseServices" style="cursor: pointer;">
-                <h4 class="mb-0">Управление на услуги <i class="bi bi-chevron-down ms-2 fs-6 text-muted"></i></h4>
+        <div id="adminServicesSection" class="card shadow-sm mb-4 border-0 border-top border-3 border-primary" style="display: none;">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#collapseServices" role="button" aria-expanded="true" aria-controls="collapseServices" style="cursor: pointer;">
+                <h5 class="mb-0 text-dark fw-bold">Управление на услуги</h5>
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-light text-secondary me-3 border">Покажи / Скрий</span>
+                    <i class="bi bi-chevron-down text-primary fs-5"></i>
+                </div>
             </div>
             <div class="collapse show" id="collapseServices">
-            <div class="card-body p-4">
+            <div class="card-body bg-light rounded-bottom">
                 <form id="addServiceForm" class="mb-4">
                     <input type="hidden" id="editServiceId" value="">
                     <div class="row g-3 mb-3">
@@ -102,12 +106,16 @@
         </div>
 
         <!-- Manage Users Section (Admin Only) -->
-        <div id="adminUsersSection" class="card shadow-lg border-0 rounded-4 mb-5" style="display: none;">
-            <div class="card-header bg-dark text-white" data-bs-toggle="collapse" href="#collapseUsers" role="button" aria-expanded="true" aria-controls="collapseUsers" style="cursor: pointer;">
-                <h4 class="mb-0">Управление на корисници <i class="bi bi-chevron-down ms-2 fs-6 text-muted"></i></h4>
+        <div id="adminUsersSection" class="card shadow-sm mb-4 border-0 border-top border-3 border-primary" style="display: none;">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#collapseUsers" role="button" aria-expanded="true" aria-controls="collapseUsers" style="cursor: pointer;">
+                <h5 class="mb-0 text-dark fw-bold">Управление на потребители</h5>
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-light text-secondary me-3 border">Покажи / Скрий</span>
+                    <i class="bi bi-chevron-down text-primary fs-5"></i>
+                </div>
             </div>
             <div class="collapse show" id="collapseUsers">
-            <div class="card-body p-4">
+            <div class="card-body bg-light rounded-bottom">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle">
                         <thead class="table-light">
@@ -122,12 +130,16 @@
         </div>
 
         <!-- Manage Gallery Section (Admin Only) -->
-        <div id="adminGallerySection" class="card shadow-lg border-0 rounded-4 mb-5" style="display: none;">
-            <div class="card-header bg-dark text-white" data-bs-toggle="collapse" href="#collapseGallery" role="button" aria-expanded="true" aria-controls="collapseGallery" style="cursor: pointer;">
-                <h4 class="mb-0">Управление на галерия <i class="bi bi-chevron-down ms-2 fs-6 text-muted"></i></h4>
+        <div id="adminGallerySection" class="card shadow-sm mb-4 border-0 border-top border-3 border-primary" style="display: none;">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#collapseGallery" role="button" aria-expanded="true" aria-controls="collapseGallery" style="cursor: pointer;">
+                <h5 class="mb-0 text-dark fw-bold">Управление на галерия</h5>
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-light text-secondary me-3 border">Покажи / Скрий</span>
+                    <i class="bi bi-chevron-down text-primary fs-5"></i>
+                </div>
             </div>
             <div class="collapse show" id="collapseGallery">
-            <div class="card-body p-4">
+            <div class="card-body bg-light rounded-bottom">
                 <form id="galleryUploadForm" class="mb-4">
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
@@ -149,12 +161,16 @@
         </div>
 
         <!-- Manage Products Section (Admin Only) -->
-        <div id="adminProductsSection" class="card shadow-lg border-0 rounded-4 mb-5" style="display: none;">
-            <div class="card-header bg-dark text-white" data-bs-toggle="collapse" href="#collapseProducts" role="button" aria-expanded="true" aria-controls="collapseProducts" style="cursor: pointer;">
-                <h4 class="mb-0">Управление на продукти <i class="bi bi-chevron-down ms-2 fs-6 text-muted"></i></h4>
+        <div id="adminProductsSection" class="card shadow-sm mb-4 border-0 border-top border-3 border-primary" style="display: none;">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#collapseProducts" role="button" aria-expanded="true" aria-controls="collapseProducts" style="cursor: pointer;">
+                <h5 class="mb-0 text-dark fw-bold">Управление на продукти</h5>
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-light text-secondary me-3 border">Покажи / Скрий</span>
+                    <i class="bi bi-chevron-down text-primary fs-5"></i>
+                </div>
             </div>
             <div class="collapse show" id="collapseProducts">
-            <div class="card-body p-4">
+            <div class="card-body bg-light rounded-bottom">
                 <form id="productUploadForm" class="mb-4">
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
@@ -240,13 +256,17 @@
         </div>
 
         <!-- My Schedule / Bookings Section (Admin and Staff) -->
-        <div id="adminScheduleSection" class="card shadow-lg border-0 rounded-4 overflow-hidden mb-5" style="display: none;">
-            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0 flex-grow-1" data-bs-toggle="collapse" href="#collapseSchedule" role="button" aria-expanded="true" aria-controls="collapseSchedule" style="cursor: pointer;">Моя графика <i class="bi bi-chevron-down ms-2 fs-6 text-muted"></i></h5>
-                <button class="btn btn-sm btn-light rounded-pill" data-bs-toggle="modal" data-bs-target="#manualBookingModal">+ Добави резервация / Блокирай час</button>
+        <div id="adminScheduleSection" class="card shadow-sm mb-4 border-0 border-top border-3 border-primary" style="display: none;">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 text-dark fw-bold" data-bs-toggle="collapse" href="#collapseSchedule" role="button" aria-expanded="true" aria-controls="collapseSchedule" style="cursor: pointer;">Моя графика</h5>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-primary rounded-pill" data-bs-toggle="modal" data-bs-target="#manualBookingModal">+ Резервация</button>
+                    <span class="badge bg-light text-secondary border">Покажи / Скрий</span>
+                    <i class="bi bi-chevron-down text-primary fs-5"></i>
+                </div>
             </div>
             <div class="collapse show" id="collapseSchedule">
-            <div class="card-body p-4">
+            <div class="card-body bg-light rounded-bottom">
                 <p class="text-muted">Управление на предстоящи часове.</p>
                 <div class="accordion shadow-sm rounded-4 overflow-hidden" id="adminScheduleAccordion">
                     <div class="text-center p-4 text-muted">Зареждане на графика...</div>
