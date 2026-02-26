@@ -20,7 +20,6 @@ const loadProfileInfo = async () => {
   if (urlParams.get('new') === 'true') {
     const profileAlert = document.getElementById('profileAlert');
     if (profileAlert) {
-  if (profileAlert) {
       profileAlert.classList.remove('d-none');
     }
     const welcomeMsg = "Добре дошли! Моля допълнете профила си с ваше име и телефоннен номер.";

@@ -786,11 +786,21 @@ async function loadSchedule(session) {
                 }
             }
 
+            // 1. Get today's date string (YYYY-MM-DD) safely
+            const today = new Date();
+            const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+            // 2. Count bookings for today only
+            const todayBookingsCount = specBookings.filter(b => {
+                const bDate = b.appointment_date || b.date || '';
+                return bDate.startsWith(todayStr);
+            }).length;
+
             const accordionItem = `
                 <div class="accordion-item border-0 border-bottom">
                     <h2 class="accordion-header" id="${headingId}">
                         <button class="accordion-button ${isFirst ? '' : 'collapsed'} fw-bold fs-5 bg-light text-dark" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="${isFirst ? 'true' : 'false'}" aria-controls="${collapseId}">
-                            💇‍♀️ ${specialist} <span class="badge bg-primary ms-3 rounded-pill">${specBookings.length} bookings</span>${averageRatingHtml}
+                            💇‍♀️ ${specialist} <span class="badge bg-primary ms-3 rounded-pill">${todayBookingsCount} часа за днес</span>${averageRatingHtml}
                         </button>
                     </h2>
                     <div id="${collapseId}" class="accordion-collapse collapse ${isFirst ? 'show' : ''}" aria-labelledby="${headingId}" data-bs-parent="#adminScheduleAccordion">
@@ -1226,7 +1236,7 @@ function setupEditStaffFormListener() {
         submitBtn.innerHTML = originalBtnText;
         submitBtn.disabled = false;
       }
-    });
+    };
   }
 }
 /**
