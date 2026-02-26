@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     } catch (error) {
         console.error('Error initializing home page:', error);
-        showMessage('Error loading data. Please refresh the page.', 'danger');
+        showMessage('Грешка при зареждане на данни. Моля, обновете страницата.', 'danger');
     }
 });
 
@@ -74,7 +74,7 @@ async function loadServices() {
         });
     } catch (error) {
         console.error('Error loading services:', error);
-        showMessage('Error loading services. Please try again later.', 'danger');
+        showMessage('Грешка при зареждане на услуги. Моля, опитайте отново.', 'danger');
     }
 }
 

@@ -371,7 +371,7 @@ async function loadSpecialists() {
     }
 
     // Clear existing options except the default one
-    specialistSelect.innerHTML = '<option value="">Select Specialist...</option>';
+    specialistSelect.innerHTML = '<option value="">Изберете специалист...</option>';
 
     // Add specialists to dropdown
     if (data && data.length > 0) {
@@ -417,7 +417,7 @@ async function loadManualBookingOptions() {
     // Populate client dropdown
     const clientSelect = document.getElementById('manualClient');
     if (clientSelect) {
-      clientSelect.innerHTML = '<option value="">Select Client...</option>';
+      clientSelect.innerHTML = '<option value="">Изберете клиент...</option>';
       if (users && users.length > 0) {
         users.forEach(user => {
           const option = document.createElement('option');
@@ -431,7 +431,7 @@ async function loadManualBookingOptions() {
     // Populate service dropdown
     const serviceSelect = document.getElementById('manualService');
     if (serviceSelect) {
-      serviceSelect.innerHTML = '<option value="">Select Service...</option>';
+      serviceSelect.innerHTML = '<option value="">Изберете услуга...</option>';
       if (services && services.length > 0) {
         services.forEach(service => {
           const option = document.createElement('option');
@@ -487,14 +487,14 @@ function setupManualBookingFormListener() {
     const timeVal = document.getElementById('manualTime').value.trim();
 
     if (!clientVal || !serviceVal || !dateVal || !timeVal) {
-      alert('Please fill in all required fields');
+      alert('Моля, попълнете всички търсени поле');
       return;
     }
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        alert('Session expired. Please log in again.');
+        alert('Сесия и стартир. Моля, влезте отново.');
         return;
       }
 
@@ -521,12 +521,12 @@ function setupManualBookingFormListener() {
 
       if (checkError) {
         console.error("Error checking existing bookings:", checkError);
-        alert("An error occurred while checking availability.");
+        alert("Грешка при проверка на дни работи.");
         return;
       }
 
       if (existingBookings && existingBookings.length > 0) {
-        alert("Warning: This time slot is already booked or blocked! Please select another time.");
+        alert("ОПНа: Праж 8 па бърже, Помеънете друга страница на дня.");
         return;
       }
 
@@ -545,7 +545,7 @@ function setupManualBookingFormListener() {
 
       if (error) {
         console.error('Error adding booking:', error);
-        alert('Failed to add appointment');
+        alert('Неуспешно добавяне на резервация');
         return;
       }
 
@@ -556,7 +556,7 @@ function setupManualBookingFormListener() {
         modalInstance.hide();
       }
 
-      alert('Appointment added successfully!');
+      alert('Резервация успешно добавена!');
 
       // Clear form
       form.reset();
@@ -565,7 +565,7 @@ function setupManualBookingFormListener() {
       await loadSchedule(session);
     } catch (error) {
       console.error('Unexpected error adding appointment:', error);
-      alert('An error occurred while adding the appointment');
+      alert('Грешка при добавяне на резервация');
     }
   });
 }
@@ -623,7 +623,7 @@ async function loadSchedule(session) {
                 id: booking.id,
                 date: dateStr,
                 time: timeStr,
-                specialist: booking.specialist?.full_name || 'Unassigned',
+                specialist: booking.specialist?.full_name || 'Неугнатен',
                 service: booking.services?.name || 'Unknown Service',
                 user_email: booking.client?.email || 'Unknown',
                 user_id: booking.client?.id || '',
@@ -637,7 +637,7 @@ async function loadSchedule(session) {
 
         // Group bookings by specialist
         const groupedBookings = bookings.reduce((acc, booking) => {
-            const specName = booking.specialist || 'Unassigned';
+            const specName = booking.specialist || 'Неугнатен';
             if (!acc[specName]) acc[specName] = [];
             acc[specName].push(booking);
             return acc;
@@ -677,11 +677,11 @@ async function loadSchedule(session) {
                 return bookingsArray.map(booking => {
                     // KEEP EXISTING STATUS LOGIC EXACTLY AS IS
                     let statusBadge = '';
-                    if (booking.status === 'confirmed') statusBadge = '<span class="badge bg-success">Confirmed</span>';
-                    else if (booking.status === 'completed') statusBadge = '<span class="badge bg-secondary">Completed</span>';
+                    if (booking.status === 'confirmed') statusBadge = '<span class="badge bg-success">Потвърден</span>';
+                    else if (booking.status === 'completed') statusBadge = '<span class="badge bg-secondary">Приключен</span>';
                     else if (booking.status === 'cancelled') {
-                        const canceller = booking.cancelled_by === 'client' ? '(by Client)' : '(by Salon)';
-                        statusBadge = `<span class="badge bg-danger">Cancelled ${canceller}</span>`;
+                        const canceller = booking.cancelled_by === 'client' ? '(от Клиент)' : '(от Салон)';
+                        statusBadge = `<span class="badge bg-danger">Отказан ${canceller}</span>`;
                     } else {
                         statusBadge = `<span class="badge bg-warning text-dark">${booking.status}</span>`;
                     }
@@ -690,13 +690,13 @@ async function loadSchedule(session) {
                     let actionButtons = '';
                     if (booking.status === 'confirmed' || booking.status === 'pending') {
                         actionButtons = `
-                            <button class="btn btn-sm btn-success complete-btn me-1" data-id="${booking.id}">Mark Completed</button>
-                            <button class="btn btn-sm btn-danger admin-cancel-btn me-1" data-id="${booking.id}">Cancel</button>
+                            <button class="btn btn-sm btn-success complete-btn me-1" data-id="${booking.id}">Приключи</button>
+                            <button class="btn btn-sm btn-danger admin-cancel-btn me-1" data-id="${booking.id}">Откажи</button>
                             <button class="btn btn-sm btn-outline-dark rounded-pill" onclick="openDossier('${booking.user_id}', '${booking.client_name}')">📝 Досие</button>
                         `;
                     } else {
                         actionButtons = `
-                            <span class="text-muted small me-1">No actions</span>
+                            <span class="text-muted small me-1">Няма действия</span>
                             <button class="btn btn-sm btn-outline-dark rounded-pill" onclick="openDossier('${booking.user_id}', '${booking.client_name}')">📝 Досие</button>
                         `;
                     }
@@ -722,7 +722,7 @@ async function loadSchedule(session) {
                                 ${booking.service}
                                 ${adminFeedbackHTML}
                             </td>
-                            <td>${booking.user_email || 'Unknown'}</td>
+                            <td>${booking.user_email || 'Неизвестен'}</td>
                             <td>${statusBadge}</td>
                             <td>${actionButtons}</td>
                         </tr>
@@ -810,7 +810,8 @@ async function loadSchedule(session) {
             if (completeBtn) {
                 const bookingId = completeBtn.getAttribute('data-id');
                 
-                if (confirm('Mark this appointment as completed?')) {
+                const action = 'complete';
+                if (action === 'complete' && confirm('Маркирай од мата авторитет като завършена?')) {
                     const originalText = completeBtn.innerHTML;
                     completeBtn.innerHTML = 'Completing...';
                     completeBtn.disabled = true;
@@ -823,11 +824,11 @@ async function loadSchedule(session) {
                         
                         if (error) throw error;
                         
-                        alert('Appointment marked as completed!');
+                        alert('Резервация бе отбелязана като приключена!');
                         await loadSchedule({ user: { id: '' } });
                     } catch (error) {
                         console.error('Error completing appointment:', error);
-                        alert('Failed to complete appointment: ' + error.message);
+                        alert('Неуспешно отбелязване: ' + error.message);
                         completeBtn.innerHTML = originalText;
                         completeBtn.disabled = false;
                     }
@@ -842,9 +843,9 @@ async function loadSchedule(session) {
             if (adminCancelBtn) {
                 const bookingId = adminCancelBtn.getAttribute('data-id');
                 
-                if (confirm('Cancel this appointment?')) {
+                if (confirm('Откажи тази резервация?')) {
                     const originalText = adminCancelBtn.innerHTML;
-                    adminCancelBtn.innerHTML = 'Cancelling...';
+                    adminCancelBtn.innerHTML = 'Отказване...';
                     adminCancelBtn.disabled = true;
                     
                     try {
@@ -855,11 +856,11 @@ async function loadSchedule(session) {
                         
                         if (error) throw error;
                         
-                        alert('Appointment cancelled!');
+                        alert('Резервациюта бе отказана!');
                         await loadSchedule({ user: { id: '' } });
                     } catch (error) {
                         console.error('Error cancelling appointment:', error);
-                        alert('Failed to cancel appointment: ' + error.message);
+                        alert('Неуспешно отказване: ' + error.message);
                         adminCancelBtn.innerHTML = originalText;
                         adminCancelBtn.disabled = false;
                     }
@@ -959,7 +960,7 @@ function setupServiceFormListener() {
     const specialist_id = document.getElementById('serviceSpecialist').value.trim() || null;
 
     if (!name || !description || isNaN(price) || isNaN(duration_minutes)) {
-      alert('Please fill in all required fields correctly');
+      alert('Моля, попълнете всички полета на нятоко');
       return;
     }
 
@@ -978,7 +979,7 @@ function setupServiceFormListener() {
 
       if (error) {
         console.error('Error adding service:', error);
-        alert('Failed to add service');
+        alert('Неуспешно добавяне на услуга');
         return;
       }
 
@@ -987,7 +988,7 @@ function setupServiceFormListener() {
 
       // Reload services
       await loadServices();
-      alert('Service added successfully!');
+      alert('Услуга успешно добавена!');
     } catch (error) {
       console.error('Unexpected error adding service:', error);
       alert('An error occurred while adding the service');
@@ -1158,7 +1159,7 @@ async function updateUserRole(userId, role) {
 function setupEditStaffFormListener() {
   const editStaffForm = document.getElementById('editStaffForm');
   if (editStaffForm) {
-    editStaffForm.addEventListener('submit', async (e) => {
+    editStaffForm.onsubmit = async (e) => {
       e.preventDefault();
       console.log("--- 1. Form submit intercepted ---");
 

@@ -21,22 +21,22 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="index.html">Home</a>
+                        <a class="nav-link" href="index.html">Начало</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="gallery.html">Gallery</a>
+                        <a class="nav-link" href="gallery.html">Галерия</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="booking.html">Booking</a>
+                        <a class="nav-link" href="booking.html">Запази час</a>
                     </li>
                     <li class="nav-item" id="navProfileLink" style="display: none;">
-                        <a class="nav-link active" aria-current="page" href="profile.html">My Profile</a>
+                        <a class="nav-link active" aria-current="page" href="profile.html">Моят профил</a>
                     </li>
                     <li class="nav-item" id="navAdminLink" style="display: none;">
-                        <a class="nav-link" href="admin.html">Admin Panel</a>
+                        <a class="nav-link" href="admin.html">Админ панел</a>
                     </li>
                     <li class="nav-item">
-                        <a id="navLoginLink" class="nav-link" href="login.html">Login</a>
+                        <a id="navLoginLink" class="nav-link" href="login.html">Вход</a>
                     </li>
                 </ul>
             </div>
@@ -50,20 +50,20 @@
             <div class="col-md-10">
                 <div class="card border-0 rounded-4 shadow-sm mb-4">
                     <div class="card-body p-4">
-                        <h4 class="fw-bold mb-3">Personal Information</h4>
-                        <div id="profileAlert" class="alert alert-info d-none">Welcome! Please complete your profile by adding your name and phone number.</div>
+                        <h4 class="fw-bold mb-3">Лична информация</h4>
+                        <div id="profileAlert" class="alert alert-info d-none">Добре дошли! Моля, комплетирай профила си с ваше име и телефоннен номер.</div>
                         <form id="profileInfoForm">
                             <div class="row g-3">
                                 <div class="col-md-6">
-                                    <label class="form-label text-muted small">Full Name</label>
+                                    <label class="form-label text-muted small">Име и фамилия</label>
                                     <input type="text" id="profileName" class="form-control" placeholder="e.g. Maria Ivanova" required>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label text-muted small">Phone Number (Required for bookings)</label>
+                                    <label class="form-label text-muted small">Телефонен номер (Трябълватен)</label>
                                     <input type="tel" id="profilePhone" class="form-control" placeholder="e.g. 088 888 8888" required>
                                 </div>
                                 <div class="col-12 text-end">
-                                    <button type="submit" class="btn btn-dark rounded-pill px-4" id="saveProfileBtn">Save Details</button>
+                                    <button type="submit" class="btn btn-dark rounded-pill px-4" id="saveProfileBtn">Запази промените</button>
                                 </div>
                             </div>
                         </form>
@@ -76,26 +76,26 @@
         <!-- My Bookings Section -->
         <div class="row justify-content-center mt-4">
             <div class="col-md-10">
-                <h3 class="fw-bold mb-4 mt-5">My Bookings</h3>
+                <h3 class="fw-bold mb-4 mt-5">Мои резервации</h3>
 
                 <div class="card border-0 rounded-4 shadow-sm mb-4">
                     <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
-                        <h5 class="fw-bold text-success"><i class="bi bi-calendar-check me-2"></i>Upcoming Appointments</h5>
+                        <h5 class="fw-bold text-success"><i class="bi bi-calendar-check me-2"></i>Предстоящи часове</h5>
                     </div>
                     <div class="card-body p-4">
                         <div class="table-responsive" id="upcomingBookingsContainer">
-                            <p class="text-muted mb-0">Loading upcoming appointments...</p>
+                            <p class="text-muted mb-0">Зареждане на предстоящи часове...</p>
                         </div>
                     </div>
                 </div>
 
                 <div class="card border-0 rounded-4 shadow-sm mb-5">
                     <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
-                        <h5 class="fw-bold text-secondary"><i class="bi bi-clock-history me-2"></i>Booking History</h5>
+                        <h5 class="fw-bold text-secondary"><i class="bi bi-clock-history me-2"></i>История на резервациите</h5>
                     </div>
                     <div class="card-body p-4">
                         <div class="table-responsive" id="historyBookingsContainer">
-                            <p class="text-muted mb-0">Loading history...</p>
+                            <p class="text-muted mb-0">Зареждане не история...</p>
                         </div>
                     </div>
                 </div>
@@ -108,33 +108,33 @@
         <div class="modal-dialog">
             <div class="modal-content border-0 rounded-4">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="editBookingModalLabel">Edit Booking</h5>
+                    <h5 class="modal-title" id="editBookingModalLabel">Редактиране на резервация</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <form id="editBookingForm">
                         <input type="hidden" id="editBookingId" value="">
                         <div class="mb-3">
-                            <label for="editService" class="form-label">Service</label>
+                            <label for="editService" class="form-label">Услуга</label>
                             <select class="form-select form-select-lg" id="editService" required>
-                                <option value="">Select a service</option>
+                                <option value="">Изберете услуга</option>
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label for="editSpecialist" class="form-label">Specialist</label>
+                            <label for="editSpecialist" class="form-label">Специалист</label>
                             <select class="form-select form-select-lg" id="editSpecialist" required>
-                                <option value="">Select a specialist</option>
+                                <option value="">Изберете специалист</option>
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label for="editDateTime" class="form-label">Date & Time</label>
+                            <label for="editDateTime" class="form-label">Дата и час</label>
                             <input type="text" id="editDateTime" class="form-control form-control-lg bg-white" readonly required>
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" form="editBookingForm" class="btn btn-primary btn-lg rounded-pill">Save Changes</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отказ</button>
+                    <button type="submit" form="editBookingForm" class="btn btn-primary btn-lg rounded-pill">Запази промените</button>
                 </div>
             </div>
         </div>

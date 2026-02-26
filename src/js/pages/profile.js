@@ -20,7 +20,12 @@ const loadProfileInfo = async () => {
   if (urlParams.get('new') === 'true') {
     const profileAlert = document.getElementById('profileAlert');
     if (profileAlert) {
+  if (profileAlert) {
       profileAlert.classList.remove('d-none');
+    }
+    const welcomeMsg = "Добре дошли! Моля допълнете профила си с ваше име и телефоннен номер.";
+    if (profileAlert && profileAlert.innerHTML !== welcomeMsg) {
+      profileAlert.innerHTML = `<span>${welcomeMsg}</span>`;
     }
     // Remove the query parameter from URL for cleaner navigation
     window.history.replaceState({}, document.title, window.location.pathname);
@@ -57,7 +62,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupFeedbackButtonDelegation();
   } catch (error) {
     console.error('Error initializing profile page:', error);
-    showMessage('Error loading profile. Please refresh the page.', 'danger');
+    showMessage('Грешка при зареждане на профил. Моля, обновете страницата.', 'danger');
   }
 });
 
@@ -75,7 +80,7 @@ function setupFormSubmission() {
     e.preventDefault();
 
     const saveBtn = document.getElementById('saveProfileBtn');
-    saveBtn.innerHTML = 'Saving...';
+    saveBtn.innerHTML = 'Запазване...';
     saveBtn.disabled = true;
 
     const fullName = document.getElementById('profileName').value.trim();
@@ -83,8 +88,8 @@ function setupFormSubmission() {
 
     // Basic validation
     if (!fullName || !phone) {
-      showMessage('Please fill in all fields.', 'warning');
-      saveBtn.innerHTML = 'Save Details';
+      showMessage('Моля, попълнете всички полета.', 'warning');
+      saveBtn.innerHTML = 'Запази промените';
       saveBtn.disabled = false;
       return;
     }
@@ -113,9 +118,9 @@ function setupFormSubmission() {
       showMessage('Profile updated successfully!', 'success');
     } catch (error) {
       console.error('Unexpected error updating profile:', error);
-      showMessage('Error updating profile: ' + error.message, 'danger');
+      showMessage('Грешка при актуализиране на профил: ' + error.message, 'danger');
     } finally {
-      saveBtn.innerHTML = 'Save Details';
+      saveBtn.innerHTML = 'Запази промените';
       saveBtn.disabled = false;
     }
   });
@@ -137,12 +142,12 @@ function setupFeedbackFormSubmission() {
     const notes = document.getElementById('feedbackNotes').value.trim();
 
     if (!bookingId || !rating || rating < 1 || rating > 5) {
-      alert('Please provide a valid rating (1-5).');
+      alert('Моля, предоставете валидна оценка (1-5).');
       return;
     }
 
     const submitBtn = document.getElementById('submitFeedbackBtn');
-    submitBtn.innerHTML = 'Submitting...';
+    submitBtn.innerHTML = 'Изпращане...';
     submitBtn.disabled = true;
 
     try {
@@ -159,7 +164,7 @@ function setupFeedbackFormSubmission() {
         feedbackModal.hide();
       }
 
-      showMessage('Thank you! Your feedback has been submitted.', 'success');
+      showMessage('Мр\u0430чи На вас! Вашят отзив и их оценка бяха тримари.', 'success');
 
       // Reload bookings to reflect the change
       const { data: { session } } = await supabase.auth.getSession();
@@ -168,7 +173,7 @@ function setupFeedbackFormSubmission() {
       }
     } catch (error) {
       console.error('Error submitting feedback:', error);
-      alert('Failed to submit feedback: ' + error.message);
+      alert('Неуспешно изпращане на отзив: ' + error.message);
     } finally {
       submitBtn.innerHTML = 'Изпрати оценка';
       submitBtn.disabled = false;
@@ -261,8 +266,8 @@ function renderBookingsTable(containerId, bookings) {
 
   if (!bookings || bookings.length === 0) {
     const emptyMessage = containerId === 'upcomingBookingsContainer' 
-      ? 'No upcoming appointments.' 
-      : 'No booking history.';
+      ? 'Ханяма предстоящи часове.' 
+      : 'Няма история на резервации.';
     container.innerHTML = `<p class="text-muted mb-0">${emptyMessage}</p>`;
     return;
   }
@@ -270,11 +275,11 @@ function renderBookingsTable(containerId, bookings) {
   let html = `<table class="table table-striped table-hover align-middle mb-0">
     <thead>
       <tr>
-        <th>Service</th>
-        <th>Specialist</th>
-        <th>Date & Time</th>
-        <th>Status</th>
-        <th>Actions</th>
+        <th>Услуга</th>
+        <th>Специалист</th>
+        <th>Дата и Час</th>
+        <th>Статус</th>
+        <th>Действия</th>
       </tr>
     </thead>
     <tbody>`;
@@ -284,13 +289,19 @@ function renderBookingsTable(containerId, bookings) {
     const formattedDate = appointmentDate.toLocaleString();
     const specialistName = booking.specialist?.full_name || 'N/A';
     const isEditable = booking.status !== 'cancelled' && booking.status !== 'completed';
-    const statusDisplay = booking.status.charAt(0).toUpperCase() + booking.status.slice(1);
+    const statusMap = {
+      'confirmed': 'Потвърден',
+      'pending': 'Чакащ',
+      'cancelled': 'Отказан',
+      'completed': 'Приключен'
+    };
+    const statusDisplay = statusMap[booking.status] || booking.status;
 
     let buttonsHTML = '';
     if (isEditable) {
-      buttonsHTML = `<button class="btn btn-sm btn-danger cancel-btn" data-id="${booking.id}">Cancel</button>`;
+      buttonsHTML = `<button class="btn btn-sm btn-danger cancel-btn" data-id="${booking.id}">Отказ</button>`;
     } else if (booking.status === 'completed' && !booking.rating) {
-      buttonsHTML = `<button class="btn btn-sm btn-primary feedback-btn" data-id="${booking.id}">Leave Feedback</button>`;
+      buttonsHTML = `<button class="btn btn-sm btn-primary feedback-btn" data-id="${booking.id}">Остави отзив</button>`;
     }
 
     html += `
@@ -367,7 +378,7 @@ function setupCancelButtonDelegation() {
       // Ask for confirmation before cancelling
       if (confirm("Are you sure you want to cancel this appointment?")) {
         const originalText = cancelBtn.innerHTML;
-        cancelBtn.innerHTML = "Cancelling...";
+        cancelBtn.innerHTML = "Отказване...";
         cancelBtn.disabled = true;
 
         try {
@@ -389,7 +400,7 @@ function setupCancelButtonDelegation() {
           
         } catch (error) {
           console.error("Error cancelling booking:", error);
-          alert("Failed to cancel: " + error.message);
+          alert("Неуспешно отказване: " + error.message);
           cancelBtn.innerHTML = originalText;
           cancelBtn.disabled = false;
         }
