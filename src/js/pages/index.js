@@ -60,7 +60,7 @@ async function loadServices() {
                     <div class="card-body p-4 d-flex flex-column">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <h5 class="card-title fw-bold mb-0">${service.name}</h5>
-                            <span class="badge bg-primary rounded-pill fs-6 px-3 py-2 shadow-sm">${service.price} lv.</span>
+                            <span class="badge bg-primary rounded-pill fs-6 px-3 py-2 shadow-sm">${service.price} €</span>
                         </div>
                         <p class="card-text text-muted flex-grow-1">${service.description || 'Professional beauty treatment.'}</p>
                         <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">

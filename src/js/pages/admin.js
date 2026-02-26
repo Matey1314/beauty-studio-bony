@@ -260,7 +260,7 @@ window.loadFinancialDashboard = async (selectedMonthStr) => {
         });
 
         // 5. Update KPI Cards
-        document.getElementById('dashRevenue').innerText = totalRevenue.toFixed(2) + ' лв.';
+        document.getElementById('dashRevenue').innerText = totalRevenue.toFixed(2) + ' €';
         
         const topSpecialist = Object.keys(specialistCounts).length > 0 ? Object.keys(specialistCounts).reduce((a, b) => specialistCounts[a] > specialistCounts[b] ? a : b) : '-';
         document.getElementById('dashTopSpecialist').innerText = topSpecialist;

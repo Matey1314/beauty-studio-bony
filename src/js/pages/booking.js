@@ -75,7 +75,7 @@ window.selectSpecialist = async (id, name) => {
             <div class="card-body">
               <h5 class="fw-bold mb-2">${service.name}</h5>
               <p class="text-muted small mb-3">${service.description || ''}</p>
-              <span class="badge bg-dark text-white p-2 fs-6">${service.price} лв. / ${duration} мин</span>
+                <span class="badge bg-dark text-white p-2 fs-6">${service.price} € / ${duration} мин</span>
             </div>
           </div>
         </div>
