@@ -69,6 +69,7 @@
                 <p class="text-white-50 mb-0 fs-5">Огледайте нашите най-нови създания в коса, нокти и грим гроююмен.</p>
             </div>
             <div class="card-body p-4 p-md-5 bg-light">
+                <div id="gallery-filters" class="d-flex justify-content-center flex-wrap gap-2 mb-4"></div>
                 <div class="row g-4" id="dynamicGalleryContainer"></div>
             </div>
         </div>
@@ -89,29 +90,88 @@
          */
         async function loadGalleryItems() {
             try {
-                const { data, error } = await supabase
+                // 1. Fetch all gallery records
+                const { data: galleryData, error: galleryError } = await supabase
                     .from('gallery')
                     .select('*')
                     .order('created_at', { ascending: false });
 
-                if (error) {
-                    console.error('Error fetching gallery:', error);
+                if (galleryError) {
+                    console.error('Error fetching gallery:', galleryError);
                     return;
                 }
+
+                // 2. Fetch all profiles (id, full_name)
+                const { data: profilesData, error: profilesError } = await supabase
+                    .from('profiles')
+                    .select('id, full_name');
+
+                if (profilesError) {
+                    console.error('Error fetching profiles:', profilesError);
+                    // Continue with gallery data even if profiles fail
+                }
+
+                // 3. Map profiles to gallery items using specialist_id
+                const enhancedGallery = (galleryData || []).map(item => {
+                    const specialist = (profilesData || []).find(p => p.id === item.specialist_id);
+                    return {
+                        ...item,
+                        specialist_name: specialist && specialist.full_name ? specialist.full_name : null
+                    };
+                });
 
                 const container = document.getElementById('dynamicGalleryContainer');
                 if (!container) return;
 
                 container.innerHTML = '';
 
-                if (data && data.length > 0) {
-                    data.forEach(item => {
+                // Extract unique specialist names for filter buttons
+                const uniqueSpecialists = [...new Set(enhancedGallery.map(item => item.specialist_name).filter(Boolean))];
+
+                // Generate Filter Buttons
+                const filtersContainer = document.getElementById('gallery-filters');
+                if (filtersContainer) {
+                    let filterHtml = `<button class="btn btn-outline-primary active gallery-filter-btn" data-filter="all">Всички</button>`;
+                    uniqueSpecialists.forEach(name => {
+                        filterHtml += `<button class="btn btn-outline-primary gallery-filter-btn" data-filter="${name}">${name}</button>`;
+                    });
+                    filtersContainer.innerHTML = filterHtml;
+
+                    // Add delegated event listener to filter container
+                    filtersContainer.addEventListener('click', (e) => {
+                        if (e.target.classList.contains('gallery-filter-btn')) {
+                            // Update active state
+                            document.querySelectorAll('.gallery-filter-btn').forEach(btn => btn.classList.remove('active', 'btn-primary'));
+                            document.querySelectorAll('.gallery-filter-btn').forEach(btn => btn.classList.add('btn-outline-primary'));
+                            e.target.classList.remove('btn-outline-primary');
+                            e.target.classList.add('btn-primary', 'active');
+
+                            const filterValue = e.target.getAttribute('data-filter');
+                            const items = document.querySelectorAll('.gallery-item');
+
+                            items.forEach(item => {
+                                if (filterValue === 'all' || item.getAttribute('data-specialist') === filterValue) {
+                                    item.style.display = 'block'; // Or 'flex' depending on your grid setup
+                                } else {
+                                    item.style.display = 'none';
+                                }
+                            });
+                        }
+                    });
+                }
+
+                if (enhancedGallery && enhancedGallery.length > 0) {
+                    enhancedGallery.forEach(item => {
                         const col = document.createElement('div');
-                        col.className = 'col-md-6 col-lg-4';
+                        col.className = 'col-md-4 mb-4 gallery-item';
+                        col.setAttribute('data-specialist', item.specialist_name || 'unknown');
                         col.innerHTML = `
-                            <a href="${item.image_url}" class="glightbox gallery-item shadow-sm">
-                                <img src="${item.image_url}" alt="${item.title || 'Portfolio Image'}" style="width: 100%; height: 300px; object-fit: cover; border-radius: 1rem; display: block;">
-                            </a>
+                            <div class="position-relative">
+                                <a href="${item.image_url}" class="glightbox gallery-item shadow-sm d-block">
+                                    <img src="${item.image_url}" alt="${item.title || 'Portfolio Image'}" style="width: 100%; height: 300px; object-fit: cover; border-radius: 1rem; display: block;">
+                                </a>
+                                ${item.specialist_name ? `<span class="badge bg-dark text-white position-absolute bottom-0 start-0 m-2" style="opacity: 0.85;"><i class="bi bi-person-fill"></i> ${item.specialist_name}</span>` : ''}
+                            </div>
                         `;
                         container.appendChild(col);
                     });

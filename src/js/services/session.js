@@ -91,15 +91,34 @@ async function updateNavbarLoggedIn(session) {
         const { error } = await supabase.auth.signOut();
         
         if (error) {
-          alert('Error logging out: ' + error.message);
+          Swal.fire({
+            title: 'Грешка',
+            text: 'Грешка при изход: ' + error.message,
+            icon: 'error',
+            confirmButtonColor: '#dc3545',
+            confirmButtonText: 'ОК'
+          });
           return;
         }
         
-        alert('You have logged out successfully!');
-        window.location.href = 'index.html';
+        Swal.fire({
+          title: 'Успешен изход',
+          text: 'Вие излязохте от профила си успешно!',
+          icon: 'success',
+          confirmButtonColor: '#198754',
+          confirmButtonText: 'ОК'
+        }).then(() => {
+          window.location.href = 'index.html';
+        });
       } catch (error) {
         console.error('Logout error:', error);
-        alert('An error occurred while logging out.');
+        Swal.fire({
+          title: 'Грешка',
+          text: 'Възникна грешка при изход.',
+          icon: 'error',
+          confirmButtonColor: '#dc3545',
+          confirmButtonText: 'ОК'
+        });
       }
     });
   }

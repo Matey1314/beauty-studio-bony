@@ -91,8 +91,20 @@ async function initializeDashboard(session) {
       if (servicesSec) servicesSec.style.display = 'none';
       if (usersSec) usersSec.style.display = 'none';
       if (scheduleSec) scheduleSec.style.display = 'block';
+      
+      // Show gallery section for staff to upload their portfolio
+      const gallerySec = document.getElementById('adminGallerySection');
+      if (gallerySec) gallerySec.style.display = 'block';
+      const productsSec = document.getElementById('adminProductsSection');
+      if (productsSec) productsSec.style.display = 'none';
+      
       await loadManualBookingOptions();
+      await loadGallery();
       await loadSchedule(session);
+      
+      // Initialize gallery form listeners for staff
+      setupGalleryFormListener();
+      setupGalleryDeleteListener();
     } else if (userRole === 'admin') {
       // Unhide the financial dashboard for admin users only
       const dashboardWrapper = document.getElementById('adminDashboardWrapper');
@@ -1320,27 +1332,50 @@ function setupEditStaffFormListener() {
  */
 async function loadGallery() {
   try {
-    const { data, error } = await supabase
+    // 1. Fetch all gallery records
+    const { data: galleryData, error: galleryError } = await supabase
       .from('gallery')
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching gallery:', error);
+    if (galleryError) {
+      console.error('Error fetching gallery:', galleryError);
       return;
     }
+
+    // 2. Fetch all profiles (id, full_name)
+    const { data: profilesData, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, full_name');
+
+    if (profilesError) {
+      console.error('Error fetching profiles:', profilesError);
+      // Continue with gallery data even if profiles fail
+    }
+
+    // 3. Map profiles to gallery items using specialist_id
+    const enhancedGallery = (galleryData || []).map(item => {
+      const specialist = (profilesData || []).find(p => p.id === item.specialist_id);
+      return {
+        ...item,
+        specialist_name: specialist && specialist.full_name ? specialist.full_name : null
+      };
+    });
 
     const galleryListContainer = document.getElementById('adminGalleryList');
     if (!galleryListContainer) return;
 
     galleryListContainer.innerHTML = '';
 
-    data.forEach(item => {
+    enhancedGallery.forEach(item => {
       const col = document.createElement('div');
       col.className = 'col-md-6 col-lg-4';
       col.innerHTML = `
         <div class="card shadow-sm border-0 position-relative">
-          <img src="${item.image_url}" alt="${item.title || 'Gallery Image'}" class="card-img-top" style="height: 250px; object-fit: cover;">
+          <div class="position-relative overflow-hidden" style="height: 250px;">
+            <img src="${item.image_url}" alt="${item.title || 'Gallery Image'}" class="card-img-top w-100 h-100" style="object-fit: cover;">
+            ${item.specialist_name ? `<span class="badge bg-dark text-white position-absolute bottom-0 start-0 m-2" style="opacity: 0.85;"><i class="bi bi-person-fill"></i> ${item.specialist_name}</span>` : '<span class="badge bg-secondary text-white position-absolute bottom-0 start-0 m-2" style="opacity: 0.85;"><i class="bi bi-person-fill"></i> Unknown</span>'}
+          </div>
           <div class="card-body">
             <p class="card-text text-muted small">${item.title || 'Untitled'}</p>
           </div>
@@ -1395,9 +1430,15 @@ function setupGalleryFormListener() {
       const imageUrl = urlData.publicUrl;
 
       // 3. Save to 'gallery' Database Table
+      // Get current user ID for specialist_id
+      const { data: { session } } = await supabase.auth.getSession();
+      const specialistId = session?.user?.id;
+
+      if (!specialistId) throw new Error("Unable to get current user ID for specialist_id");
+
       const { error: dbError } = await supabase
         .from('gallery')
-        .insert([{ image_url: imageUrl, title: title }]);
+        .insert([{ image_url: imageUrl, title: title, specialist_id: specialistId }]);
 
       if (dbError) throw new Error("Database insert failed: " + dbError.message);
 
