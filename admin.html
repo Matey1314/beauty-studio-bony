@@ -56,7 +56,7 @@
 
         <!-- Manage Services Section (Admin Only) -->
         <div id="adminServicesSection" class="card shadow-sm mb-4 border-0 border-top border-3 border-primary" style="display: none;">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#collapseServices" role="button" aria-expanded="true" aria-controls="collapseServices" style="cursor: pointer;">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseServices" role="button" aria-expanded="true" aria-controls="collapseServices" style="cursor: pointer;">
                 <h5 class="mb-0 text-dark fw-bold">Управление на услуги</h5>
                 <div class="d-flex align-items-center">
                     <span class="badge bg-light text-secondary me-3 border">Покажи / Скрий</span>
@@ -107,7 +107,7 @@
 
         <!-- Manage Users Section (Admin Only) -->
         <div id="adminUsersSection" class="card shadow-sm mb-4 border-0 border-top border-3 border-primary" style="display: none;">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#collapseUsers" role="button" aria-expanded="true" aria-controls="collapseUsers" style="cursor: pointer;">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseUsers" role="button" aria-expanded="true" aria-controls="collapseUsers" style="cursor: pointer;">
                 <h5 class="mb-0 text-dark fw-bold">Управление на потребители</h5>
                 <div class="d-flex align-items-center">
                     <span class="badge bg-light text-secondary me-3 border">Покажи / Скрий</span>
@@ -131,7 +131,7 @@
 
         <!-- Manage Gallery Section (Admin Only) -->
         <div id="adminGallerySection" class="card shadow-sm mb-4 border-0 border-top border-3 border-primary" style="display: none;">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#collapseGallery" role="button" aria-expanded="true" aria-controls="collapseGallery" style="cursor: pointer;">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseGallery" role="button" aria-expanded="true" aria-controls="collapseGallery" style="cursor: pointer;">
                 <h5 class="mb-0 text-dark fw-bold">Управление на галерия</h5>
                 <div class="d-flex align-items-center">
                     <span class="badge bg-light text-secondary me-3 border">Покажи / Скрий</span>
@@ -162,7 +162,7 @@
 
         <!-- Manage Products Section (Admin Only) -->
         <div id="adminProductsSection" class="card shadow-sm mb-4 border-0 border-top border-3 border-primary" style="display: none;">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#collapseProducts" role="button" aria-expanded="true" aria-controls="collapseProducts" style="cursor: pointer;">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseProducts" role="button" aria-expanded="true" aria-controls="collapseProducts" style="cursor: pointer;">
                 <h5 class="mb-0 text-dark fw-bold">Управление на продукти</h5>
                 <div class="d-flex align-items-center">
                     <span class="badge bg-light text-secondary me-3 border">Покажи / Скрий</span>
@@ -198,18 +198,23 @@
 
         <!-- Financial Dashboard Section -->
         <div id="adminDashboardWrapper" class="d-none">
-            <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 bg-white p-3 rounded-4 shadow-sm border" style="display: none;" id="dashboardHeaderSection">
-                <button class="btn btn-dark fw-bold rounded-pill px-4" type="button" data-bs-toggle="collapse" data-bs-target="#dashboardCollapse" aria-expanded="false" aria-controls="dashboardCollapse">
-                    📊 Покажи / Скрий статистиката
-                </button>
-                <div class="d-flex align-items-center mt-3 mt-md-0">
-                    <label class="me-2 text-muted small fw-bold mb-0">Избери месец:</label>
-                    <input type="month" id="dashboardMonthPicker" class="form-control rounded-pill bg-light border-0 shadow-sm w-auto">
+            <div class="card shadow-sm mb-4 border-0 border-top border-3 border-primary" style="display: none;" id="dashboardHeaderSection">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapse-Statistics" role="button" aria-expanded="true" aria-controls="collapse-Statistics" style="cursor: pointer;">
+                    <h5 class="mb-0 text-dark fw-bold">Финансова статистика</h5>
+                    <div class="d-flex align-items-center">
+                        <span class="badge bg-light text-secondary me-3 border">Покажи / Скрий</span>
+                        <i class="bi bi-chevron-down text-primary fs-5"></i>
+                    </div>
                 </div>
-            </div>
+                
+                <div class="collapse show" id="collapse-Statistics">
+                    <div class="card-body bg-light rounded-bottom">
+                        <div class="d-flex justify-content-end align-items-center mb-4 pb-3 border-bottom">
+                            <label for="dashboardMonthPicker" class="me-2 fw-bold text-secondary mb-0">Избери месец:</label>
+                            <input type="month" id="dashboardMonthPicker" class="form-control form-control-sm rounded-pill bg-white border shadow-sm w-auto" style="width: 160px;">
+                        </div>
 
-            <div class="collapse mb-5" id="dashboardCollapse">
-                <div class="row g-4" id="financialDashboard">
+                        <div class="row g-4" id="financialDashboard">
                     <div class="col-12">
                         <h4 class="fw-bold mb-3"><i class="bi bi-graph-up-arrow text-primary"></i> Статистика за месеца</h4>
                     </div>
@@ -251,6 +256,8 @@
                             <canvas id="servicesChart"></canvas>
                         </div>
                     </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -258,7 +265,7 @@
         <!-- My Schedule / Bookings Section (Admin and Staff) -->
         <div id="adminScheduleSection" class="card shadow-sm mb-4 border-0 border-top border-3 border-primary" style="display: none;">
             <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h5 class="mb-0 text-dark fw-bold" data-bs-toggle="collapse" href="#collapseSchedule" role="button" aria-expanded="true" aria-controls="collapseSchedule" style="cursor: pointer;">Моя графика</h5>
+                <h5 class="mb-0 text-dark fw-bold" data-bs-toggle="collapse" data-bs-target="#collapseSchedule" role="button" aria-expanded="true" aria-controls="collapseSchedule" style="cursor: pointer;">Моя графика</h5>
                 <div class="d-flex align-items-center gap-2">
                     <button class="btn btn-sm btn-primary rounded-pill" data-bs-toggle="modal" data-bs-target="#manualBookingModal">+ Резервация</button>
                     <span class="badge bg-light text-secondary border">Покажи / Скрий</span>
