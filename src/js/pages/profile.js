@@ -114,7 +114,13 @@ function setupFormSubmission() {
         profileAlert.classList.add('d-none');
       }
 
-      showMessage('Profile updated successfully!', 'success');
+      Swal.fire({
+        title: 'Успешно запазване!',
+        text: 'Вашите лични данни бяха обновени.',
+        icon: 'success',
+        confirmButtonColor: '#198754',
+        confirmButtonText: 'ОК'
+      });
     } catch (error) {
       console.error('Unexpected error updating profile:', error);
       showMessage('Грешка при актуализиране на профил: ' + error.message, 'danger');
@@ -163,7 +169,7 @@ function setupFeedbackFormSubmission() {
         feedbackModal.hide();
       }
 
-      showMessage('Мр\u0430чи На вас! Вашят отзив и их оценка бяха тримари.', 'success');
+      showMessage('Мр\u0430 Вашата оценка беше изпратена успешно.', 'success');
 
       // Reload bookings to reflect the change
       const { data: { session } } = await supabase.auth.getSession();
